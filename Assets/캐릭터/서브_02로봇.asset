@@ -1,0 +1,29 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c5b32cc2d3d208d40abf6241f177ac30, type: 3}
+  m_Name: "\uC11C\uBE0C_02\uB85C\uBD07"
+  m_EditorClassIdentifier: Assembly-CSharp::CharacterData
+  characterID: 002
+  characterName: "\uB85C\uBD07"
+  characterRace: "\uB85C\uBD07"
+  characterInfo: "\uBB34\uC2A8\uC0DD\uAC01\uC744 \uD558\uACE0 \uC788\uB294\uC9C0
+    \uBAA8\uB974\uACA0\uB294 \uB85C\uBD07 \uC785\uB2C8\uB2E4."
+  characterSprite: {fileID: 7482667652216324306, guid: 0060f955cd0788c4aa600a8b1fec1cb1, type: 3}
+  characterColor: {r: 0.2, g: 0.2, b: 0.2, a: 1}
+  attackPower: 7
+  hp: 100
+  defense: 13
+  uniqueSkillName: "\uC804\uD22C\uB85C\uCF13"
+  uniqueSkillDescription: "\uBE14\uB799\uBE14\uB85D\uC774 3\uB9E4\uCE58\uC5D0\uC11C
+    \uBE14\uB85D\uC774 5\uAC1C\uC774\uC0C1 \uD30C\uAD34\uB418\uC5C8\uB2E4\uBA74 \uC801\uC5D0\uAC8C
+    100\uB300\uBBF8\uC9C0\uB97C \uC900\uB2E4."
+  synergySystem: "\uBE14\uB799"
