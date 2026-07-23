@@ -13,6 +13,11 @@ public class IntroLoadingManager : MonoBehaviour
     [Tooltip("인스펙터 체크박스를 제어할 인트로 클릭 감지 버튼 컴포넌트를 직접 넣어주세요.")]
     public Button introClickButton;
 
+        [Header("💡 창고 복귀 시 즉시 켜줄 마을 UI 설정")]
+    public GameObject townScreenObject;   // ⬅ 진짜 마을 패널 오브젝트가 들어갈 가방
+    public GameObject topBarScreenObject;  // ⬅ 상단바 UI 패널 오브젝트가 들어갈 가방
+
+
 
     [Header("로딩 속도 설정")]
     public float loadingSpeed = 0.5f;
@@ -23,20 +28,28 @@ public class IntroLoadingManager : MonoBehaviour
 
     // 어떤 문구 세트를 사용할지 결정하는 변수 (0, 1, 2 중 하나)
     private int textGroupIndex = 0;
+    public static bool isFirstGameBoot = true; 
 
     // ⬇️ [27번째 줄 void Start() 구역을 아래 코드로 통째로 복사 붙여넣기 하세요!] ⬇️
     void Start()
     {
-        // 👑 [창고 복귀 유저 인트로 가동 절대 차단막 엔진 탑재]
-        // 캐릭터 저장고 방에서 뒤로가기를 누르고 방금 막 돌아온 복귀 유저인지 검사합니다.
+        // 💡 [추가] 캐릭터 창고에서 뒤로가기를 누르고 방금 막 돌아온 복귀 유저인지 검사합니다.
         if (PlayerPrefs.HasKey("IsReturningFromStorage") && PlayerPrefs.GetInt("IsReturningFromStorage") == 1)
         {
-            Debug.Log("[IntroManager] 창고 복귀 유저 상태가 확인되어 인트로 로딩 가동을 원천 차단하고 셀프 종료합니다.");
+            PlayerPrefs.SetInt("IsReturningFromStorage", 0);
+            PlayerPrefs.Save();
 
-            // 인트로 패널 본체 오브젝트를 눈치 챙겨서 즉시 강제로 꺼버리고 연산을 탈출합니다!
+            // 🎯 [핵심 패스] 만약 타이틀 화면 오브젝트가 연결되어 있다면 강제로 꺼버립니다.
+            if (titleScreenObject != null) titleScreenObject.SetActive(false);
+
+            // 🎯 [핵심 오픈] 가려져 있던 진짜 마을 레이아웃과 대망의 상단바를 시원하게 강제 가동합니다!
+            if (townScreenObject != null) townScreenObject.SetActive(true);
+            if (topBarScreenObject != null) topBarScreenObject.SetActive(true);
+
             gameObject.SetActive(false);
-            return; // ★ 복귀 처리가 끝났으므로 아래쪽에 적힌 원래 첫 인트로 실행 코드들은 완전히 무시하고 패스합니다!
+            return; 
         }
+
 
         // ----------------------------------------------------
         // 🌀 [기존에 적혀있던 인트로 시작 순정 로직 구역 - 오차 없이 안전 보존]
