@@ -18,4 +18,24 @@ public class CharacterComponent : MonoBehaviour
             selectManager.OnSelectCharacter(myData, this.gameObject);
         }
     }
+        private void Start()
+    {
+        // 💡 [방어막 코드 추가]: 상단 파티창 슬롯 내부에서 태어난 카드라면, 창고용 장착 리스너가 중복 등록되지 않도록 탈출시킵니다!
+        if (transform.parent != null && transform.parent.name.Contains("슬롯"))
+        {
+            return; 
+        }
+        // 💡 내 몸통에 붙어있는 Button 컴포넌트를 가져옵니다.
+        UnityEngine.UI.Button myBtn = GetComponent<UnityEngine.UI.Button>();
+        
+        // 💡 캐릭터 창고 화면을 통제하는 메인 매니저를 시스템에서 검색합니다.
+        CharacterStorageManager storageManager = FindAnyObjectByType<CharacterStorageManager>();
+        
+        // 💡 모든 부품이 완벽하게 존재한다면, 이 카드를 터치했을 때 창고 매니저의 함수가 발동하도록 연결 단추를 채웁니다!
+        if (myBtn != null && storageManager != null && myData != null)
+        {
+            myBtn.onClick.AddListener(() => storageManager.OnClickUniqueStorageCharacter(myData.characterID));
+        }
+    }
+
 }
