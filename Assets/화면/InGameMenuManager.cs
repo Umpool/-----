@@ -173,12 +173,16 @@ public class InGameMenuManager : MonoBehaviour
     public void OnClickGoToCharacterStorage()
     {
         Debug.Log("[Menu] 기획 흐름: 유저가 캐릭터 보관함 입장을 요청함 -> '캐릭터 저장고' 씬을 신선하게 로딩합니다.");
-
+        
         // [안전장치] 혹시라도 메모리에 남아있을 수 있는 유령 지연 타이머들을 포맷합니다.
         CancelInvoke();
+
+        // 💡 [세이브 강제 주입]: 처음 뽑은 메인 캐릭터 데이터가 씬 이동 중 유실되지 않도록 하드디스크에 물리 저장합니다!
+        PlayerPrefs.Save();
 
         // 유니티 공식 화면 전환 기능을 사용해 빌드 프로필에 등록될 씬 이름("캐릭터 저장고")을 호출합니다.
         UnityEngine.SceneManagement.SceneManager.LoadScene("캐릭터 저장고");
     }
+
 
 }
