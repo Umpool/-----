@@ -88,23 +88,44 @@ public class AdventureStageManager : MonoBehaviour
             // ----------------------------------------------------------------------
             // [정상 전진 대기 단계] 다음 턴으로 넘어가기 위한 연출 세팅
             // ----------------------------------------------------------------------
-            // 2. 방향 버튼(상단 버튼 포함)은 모두 확실하게 꺼줍니다.
+// 🛑 AdventureStageManager.cs 93~108줄 수정
+// 2. 방향 버튼 종료
             uiManager.SetDirectionButtonsActive(false);
-            
-            // 3. 대신 다음 칸으로 전진하기 위해 '종합 버튼'을 다시 켜줍니다.
-            if (uiManager.nextDialogueButton != null) 
-                uiManager.nextDialogueButton.gameObject.SetActive(true);
-            
-            // 4. 안내 문구를 화면에 출력합니다.
-            uiManager.SetTextInstant("앞으로 전진하려면 화면을 터치하십시오.");
 
-            // 5. 유저가 전진하기 위해 화면을 누를 때까지 기다립니다.
+            // 1. 안내 멘트를 타이핑 효과로 출력 시작합니다.
+            string forwardPrompt = "앞으로 전진하려면 화면을 터치하십시오.";
+            uiManager.SetTextTyping(forwardPrompt);
+            
+            // 💡 [★ 레이어 꼬임 버그 원천 차단!] 
+            // 오브젝트의 체크박스를 완전히 꺼버리면 유니티가 포커스를 잃어버리므로,
+            // 오브젝트는 켜둔 채로 '마우스 클릭 기능(Interactable)'만 안전하게 잠가둡니다!
+            if (uiManager.nextDialogueButton != null)
+            {
+                uiManager.nextDialogueButton.gameObject.SetActive(true); // 켜둔 상태 유지
+                uiManager.nextDialogueButton.interactable = false;       // 클릭만 잠금
+            }
+
+            // [계산기 가동] 타자가 끝나는 시간만큼 가만히 기다려줍니다.
+            float forwardDisplayTime = forwardPrompt.Length * uiManager.dialogueSpeed;
+            yield return new WaitForSeconds(forwardDisplayTime);
+
+            // 타자가 다 끝났으니 유저의 터치 신호 서랍을 깨끗하게 청소합니다.
             isNextButtonClicked = false; 
+
+            // 2. 🎯 타자가 끝나는 0.001초의 순간에 종합 버튼의 클릭 잠금을 풀어줍니다!
+            if (uiManager.nextDialogueButton != null)
+            {
+                uiManager.nextDialogueButton.interactable = true; // 클릭 해제!
+            }
+
+            // 3. 유저가 전진하기 위해 화면(종합 버튼)을 누를 때까지 온전하게 기다립니다.
             while (!isNextButtonClicked) yield return null;
 
-            // 6. 클릭이 완료되어 다음 전진을 시작하므로, 다시 종합 버튼을 꺼줍니다.
-            if (uiManager.nextDialogueButton != null) 
-                uiManager.nextDialogueButton.gameObject.SetActive(false);
+            // 4. 클릭이 완료되어 다음 전진 루프로 진입하므로, 유저가 연타하지 못하게 클릭 기능을 다시 잠가둡니다.
+            if (uiManager.nextDialogueButton != null)
+            {
+                uiManager.nextDialogueButton.interactable = false;
+            }
         }
     }
 
@@ -119,13 +140,14 @@ public class AdventureStageManager : MonoBehaviour
         {
             uiManager.SetTextTyping(data.eventDialogues[i]);
 
-            // 💡 [★ 타이밍 자동화 계산기 가동!]
-            // 대사 전체 글자 수와 인스펙터의 타자 속도를 곱해서 "정확히 타자가 다 쳐지는 시간"을 계산합니다.
-            float textDisplayTime = data.eventDialogues[i].Length * uiManager.dialogueSpeed;
-            
-            // 타자가 다 다다닥 찍히는 동안 정확하게 기다린 뒤, 글을 읽을 수 있게 1.5초만 살짝 숨을 고릅니다.
-            yield return new WaitForSeconds(textDisplayTime + 1.5f);
+            // 🎯 [★ 완벽한 타이밍 체킹 구현]
+            // UI 매니저가 한 글자씩 타자 쳐서 글자를 완전히 다 완성할 때까지 코드를 일시정지하고 기다립니다.
+            while (!uiManager.isTypingFinished) yield return null;
+
+            // 글자가 완벽하게 한 화면 가득 다 쳐졌으므로, 유저가 눈으로 읽을 수 있게 딱 1.2초만 숨을 고르고 다음 대사로 넘어갑니다!
+            yield return new WaitForSeconds(1.2f);
         }
+
 
         // ----------------------------------------------------------------------
         // 2. [분기 선택 단계] 기본 대사가 모두 끝나면 좌측/우측 버튼이 즉시 등장합니다!
@@ -142,10 +164,21 @@ public class AdventureStageManager : MonoBehaviour
             case EventType.RewardItem:
             case EventType.MeetMonster:
             case EventType.MeetPerson:
-                // 안내문을 띄우고 조사/진입 선택지(좌측=확인, 우측=취소)를 즉시 활성화합니다.
-                uiManager.SetTextInstant(data.nextActionPrompt);
-                
+                // 💡 [★ 수정] 선택지 안내문도 한 번에 띄우지 않고 타자 효과로 다다닥 출력합니다!
+                uiManager.SetTextTyping(data.nextActionPrompt);
+
+                // 화면 전체를 덮는 종합 버튼은 방해되지 않게 먼저 꺼둡니다.
                 if (uiManager.nextDialogueButton != null) uiManager.nextDialogueButton.gameObject.SetActive(false);
+                
+                // 좌측/우측 버튼도 글자가 다 타이핑되는 동안에는 유저가 누르지 못하게 잠시 숨겨둡니다.
+                if (uiManager.leftButton != null) uiManager.leftButton.gameObject.SetActive(false);
+                if (uiManager.rightButton != null) uiManager.rightButton.gameObject.SetActive(false);
+
+                // 💡 [★ 타이밍 계산] 안내문의 글자 수에 맞춰 타이핑이 완벽히 끝날 때까지 정확하게 대기합니다!
+                float promptDisplayTime = data.nextActionPrompt.Length * uiManager.dialogueSpeed;
+                yield return new WaitForSeconds(promptDisplayTime);
+
+                // 🎯 [★ 칼 타이밍!] 글자가 마지막 글자까지 다다닥 찍히는 순간 0초의 망설임도 없이 좌/우 버튼을 뿅 켭니다!
                 if (uiManager.leftButton != null) uiManager.leftButton.gameObject.SetActive(true);
                 if (uiManager.rightButton != null) uiManager.rightButton.gameObject.SetActive(true);
 
@@ -184,21 +217,30 @@ public class AdventureStageManager : MonoBehaviour
                             if (CurrencyManager.Instance != null) CurrencyManager.Instance.AddColor(colorEngName, 1);
                         }
 
-                        // 결과 텍스트를 화면에 즉시 쏩니다!
-                        uiManager.SetTextInstant(rewardResultText);
+                        // 💡 [★ 타이핑 효과 연동] 보상 텍스트가 다다닥 찍히도록 변경!
+                        uiManager.SetTextTyping(rewardResultText);
+                        
+                        // 글자 길이에 맞춰 타이핑이 완벽하게 끝날 때까지 컴퓨터가 자동으로 계산하여 대기합니다.
+                        float rewardTime = rewardResultText.Length * uiManager.dialogueSpeed;
+                        yield return new WaitForSeconds(rewardTime);
                     }
-                    // [몬스터 조우 연출] 네가 살려두라고 한 고마운 2초 워프 대기 시간 유지!
+                    // ⚔️ [2. 몬스터 조우 연출 타이핑화]
                     else if (data.eventType == EventType.MeetMonster)
                     {
-                        uiManager.SetTextInstant("전투에 돌입합니다! 3매치 퍼즐 화면으로 이동 중...");
-                        yield return new WaitForSeconds(2.0f);
+                        string monsterWarnText = "전투에 돌입합니다! 3매치 퍼즐 화면으로 이동 중...";
+                        uiManager.SetTextTyping(monsterWarnText);
+
+                        float monsterTime = monsterWarnText.Length * uiManager.dialogueSpeed;
+                        yield return new WaitForSeconds(monsterTime + 1.2f); // 안내 글자 다 읽고 안전하게 워프!
+
                         SceneManager.LoadScene("PuzzleBattleScene");
                         yield break;
                     }
                     // [사람 조우 연출] 인스펙터 대사 화면 즉시 출력 및 진짜 컬러 적립
                     else if (data.eventType == EventType.MeetPerson)
                     {
-                        uiManager.SetTextInstant(data.nextActionPrompt);
+                        // 💡 [★ 타이핑 효과 연동] 인스펙터 대사가 다다닥 찍히도록 변경!
+                        uiManager.SetTextTyping(data.nextActionPrompt);
 
                         ColorType targetColor = ColorType.None;
                         switch (data.npcType)
@@ -214,11 +256,29 @@ public class AdventureStageManager : MonoBehaviour
                         {
                             CurrencyManager.Instance.AddColor(targetColor.ToString(), 1);
                         }
+
+                        // 글자 수에 맞춰 타이핑 대기 가동!
+                        float npcTime = data.nextActionPrompt.Length * uiManager.dialogueSpeed;
+                        yield return new WaitForSeconds(npcTime);
                     }
 
-                    // 💡 [★ 핵심 변경 지점] 보상 결과를 화면에 띄우자마자 
-                    // 종합 버튼을 숨긴 채 컴퓨터의 강제 시간 지연 없이 즉시 이 조건문을 탈출합니다!
-                    if (uiManager.nextDialogueButton != null) uiManager.nextDialogueButton.gameObject.SetActive(false);
+                    // 💡 [★ 타이밍 정밀 개조] 보상이나 NPC 대사 글자가 다 쳐진 후 1초 더 보여주기
+                    if (data.eventType == EventType.RewardItem || data.eventType == EventType.MeetPerson)
+                    {
+                        // 보물상자일 때는 uiManager에 담긴 현재 화면 글자를 그대로 쓰고, 사람일 때는 인스펙터 대사를 가져옵니다.
+                        string currentText = (data.eventType == EventType.RewardItem) ? uiManager.logText.text : data.nextActionPrompt;
+                        
+                        // 타자가 다 끝날 때까지 컴퓨터가 자동으로 연산하여 안전하게 대기합니다.
+                        float displayFinishTime = currentText.Length * uiManager.dialogueSpeed;
+                        yield return new WaitForSeconds(displayFinishTime);
+
+                        // ⏳ [기획안 완벽 반영] 타이핑이 완전히 끝난 직후부터 정확히 '1.0초'간 더 화면을 멈춰 세웁니다!
+                        yield return new WaitForSeconds(1.0f);
+                    }
+
+                    if (uiManager.nextDialogueButton != null) 
+                        uiManager.nextDialogueButton.gameObject.SetActive(false);
+
                 }
                 else if (isRightButtonClicked)
                 {
@@ -256,17 +316,27 @@ public class AdventureStageManager : MonoBehaviour
         if (uiManager.leftButton != null) uiManager.leftButton.gameObject.SetActive(false);
         if (uiManager.rightButton != null) uiManager.rightButton.gameObject.SetActive(false);
 
+
+        // 318번째 줄 위치 (우측 버튼: 마을 귀환 선택 시)
         if (isRightButtonClicked)
         {
-            // 🏡 [★ 타이핑 효과 추가] 마을 귀환 시작 대사
+            // 🏡 마을 귀환 대사 타이핑 연출 시작
             string townReturnText = "모험을 마치고 마을로 발걸음을 돌립니다...";
             uiManager.SetTextTyping(townReturnText);
 
             float returnTime = townReturnText.Length * uiManager.dialogueSpeed;
             yield return new WaitForSeconds(returnTime + 0.8f);
 
+            // 💡 [★ 꼬임 해결 정석 편집]
+            // 복잡한 지갑 매니저 함수를 호출하지 않고, 유니티 정석 세이브 방식을 직접 때려 넣습니다.
+            PlayerPrefs.SetInt("IsReturningFromStorage", 1);
+            PlayerPrefs.Save(); // 쾅! 영구 저장소 서랍을 확실하게 굳혀 닫습니다.
+
+            // 🚀 한 치의 오차도 없이 즉시 안전하게 마을 화면으로 워프!
             SceneManager.LoadScene("게임초반에서마을까지"); 
         }
+
+
         else if (isLeftButtonClicked)
         {
             // 🏃 [★ 타이핑 효과 추가] 모험 지속 선택 대사
