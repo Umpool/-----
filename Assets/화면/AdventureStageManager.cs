@@ -154,12 +154,12 @@ public class AdventureStageManager : MonoBehaviour
         // ----------------------------------------------------------------------
         switch (data.eventType)
         {
-            case EventType.NothingFound:
-                // 아무것도 찾지 못함: 안내문 즉시 출력 후 전진 루프로 자연스럽게 이행
-                uiManager.SetTextInstant(data.nextActionPrompt);
-                float nothingTime = data.nextActionPrompt.Length * uiManager.dialogueSpeed;
-                yield return new WaitForSeconds(nothingTime + 1.5f);
-                break;
+                case EventType.NothingFound:
+                    uiManager.SetTextTyping(data.nextActionPrompt);
+                    float nothingTime = data.nextActionPrompt.Length * uiManager.dialogueSpeed;
+                    yield return new WaitForSeconds(nothingTime + 1.5f);
+                    break;
+
 
             case EventType.RewardItem:
             case EventType.MeetMonster:
@@ -237,30 +237,55 @@ public class AdventureStageManager : MonoBehaviour
                         yield break;
                     }
                     // [사람 조우 연출] 인스펙터 대사 화면 즉시 출력 및 진짜 컬러 적립
-                    else if (data.eventType == EventType.MeetPerson)
-                    {
-                        // 💡 [★ 타이핑 효과 연동] 인스펙터 대사가 다다닥 찍히도록 변경!
-                        uiManager.SetTextTyping(data.nextActionPrompt);
+        else if (data.eventType == EventType.MeetPerson)
+        {
+            ColorType targetColor = ColorType.None;
+            string colorName = "알 수 없는";
+            string colorHex = "#FFFFFF";
 
-                        ColorType targetColor = ColorType.None;
-                        switch (data.npcType)
-                        {
-                            case NpcType.Warrior:        targetColor = ColorType.Red; break;    
-                            case NpcType.Chief:          targetColor = ColorType.Green; break;  
-                            case NpcType.Healer:         targetColor = ColorType.Yellow; break; 
-                            case NpcType.Merchant:       targetColor = ColorType.Blue; break;   
-                            case NpcType.archaeologist:  targetColor = ColorType.Purple; break; 
-                        }
+            switch (data.npcType)
+            {
+                case NpcType.Warrior: 
+                    targetColor = ColorType.Red; 
+                    colorName = "레드"; 
+                    colorHex = "#FF3333"; 
+                    break;
+                case NpcType.Chief: 
+                    targetColor = ColorType.Green; 
+                    colorName = "그린"; 
+                    colorHex = "#33FF33"; 
+                    break;
+                case NpcType.Healer: 
+                    targetColor = ColorType.Yellow; 
+                    colorName = "옐로"; 
+                    colorHex = "#FFFF33"; 
+                    break;
+                case NpcType.Merchant: 
+                    targetColor = ColorType.Blue; 
+                    colorName = "블루"; 
+                    colorHex = "#3333FF"; 
+                    break;
+                case NpcType.archaeologist: 
+                    targetColor = ColorType.Purple; 
+                    colorName = "퍼플"; 
+                    colorHex = "#A64DFF"; 
+                    break;
+            }
 
-                        if (targetColor != ColorType.None && CurrencyManager.Instance != null)
-                        {
-                            CurrencyManager.Instance.AddColor(targetColor.ToString(), 1);
-                        }
+            if (targetColor != ColorType.None && CurrencyManager.Instance != null)
+            {
+                CurrencyManager.Instance.AddColor(targetColor.ToString(), 1);
+            }
 
-                        // 글자 수에 맞춰 타이핑 대기 가동!
-                        float npcTime = data.nextActionPrompt.Length * uiManager.dialogueSpeed;
-                        yield return new WaitForSeconds(npcTime);
-                    }
+            string rewardMessage = data.nextActionPrompt + "\n\n<color=" + colorHex + ">" + colorName + "</color> 컬러 1개를 얻었습니다!";
+
+            uiManager.SetTextTyping(rewardMessage);
+
+            float npcTime = rewardMessage.Length * uiManager.dialogueSpeed;
+            yield return new WaitForSeconds(npcTime);
+        }
+
+
 
                     // 💡 [★ 타이밍 정밀 개조] 보상이나 NPC 대사 글자가 다 쳐진 후 1초 더 보여주기
                     if (data.eventType == EventType.RewardItem || data.eventType == EventType.MeetPerson)
@@ -292,6 +317,14 @@ public class AdventureStageManager : MonoBehaviour
                 }
                 break;
         }
+                    if (data.eventType == EventType.NothingFound)
+            {
+                if (uiManager.nextDialogueButton != null)
+                {
+                    uiManager.nextDialogueButton.gameObject.SetActive(true);
+                }
+                yield break;
+            }
 
         // ----------------------------------------------------------------------
         // 3. [최종 종착지 결정 단계] 이벤트가 마무리되고 버튼이 켜지는 구간
