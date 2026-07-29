@@ -90,44 +90,19 @@ public class AdventureStageManager : MonoBehaviour
             // ----------------------------------------------------------------------
 // 🛑 AdventureStageManager.cs 93~108줄 수정
 // 2. 방향 버튼 종료
-            uiManager.SetDirectionButtonsActive(false);
+                uiManager.SetDirectionButtonsActive(false);
 
-            // 1. 안내 멘트를 타이핑 효과로 출력 시작합니다.
-            string forwardPrompt = "앞으로 전진하려면 화면을 터치하십시오.";
-            uiManager.SetTextTyping(forwardPrompt);
-            
-            // 💡 [★ 레이어 꼬임 버그 원천 차단!] 
-            // 오브젝트의 체크박스를 완전히 꺼버리면 유니티가 포커스를 잃어버리므로,
-            // 오브젝트는 켜둔 채로 '마우스 클릭 기능(Interactable)'만 안전하게 잠가둡니다!
-            if (uiManager.nextDialogueButton != null)
-            {
-                uiManager.nextDialogueButton.gameObject.SetActive(true); // 켜둔 상태 유지
-                uiManager.nextDialogueButton.interactable = false;       // 클릭만 잠금
-            }
+                // [안전한 자동 전진] 안내와 터치 대기 단계를 건너뛰고 시스템 서랍을 깨끗이 청소합니다.
+                isNextButtonClicked = false;
 
-            // [계산기 가동] 타자가 끝나는 시간만큼 가만히 기다려줍니다.
-            float forwardDisplayTime = forwardPrompt.Length * uiManager.dialogueSpeed;
-            yield return new WaitForSeconds(forwardDisplayTime);
-
-            // 타자가 다 끝났으니 유저의 터치 신호 서랍을 깨끗하게 청소합니다.
-            isNextButtonClicked = false; 
-
-            // 2. 🎯 타자가 끝나는 0.001초의 순간에 종합 버튼의 클릭 잠금을 풀어줍니다!
-            if (uiManager.nextDialogueButton != null)
-            {
-                uiManager.nextDialogueButton.interactable = true; // 클릭 해제!
-            }
-
-            // 3. 유저가 전진하기 위해 화면(종합 버튼)을 누를 때까지 온전하게 기다립니다.
-            while (!isNextButtonClicked) yield return null;
-
-            // 4. 클릭이 완료되어 다음 전진 루프로 진입하므로, 유저가 연타하지 못하게 클릭 기능을 다시 잠가둡니다.
-            if (uiManager.nextDialogueButton != null)
-            {
-                uiManager.nextDialogueButton.interactable = false;
+                if (uiManager.nextDialogueButton != null)
+                {
+                    uiManager.nextDialogueButton.gameObject.SetActive(false);
+                    uiManager.nextDialogueButton.interactable = false;
+                }
             }
         }
-    }
+
 
         private IEnumerator PlayEvent(AdventureScenarioData data)
     {
@@ -210,12 +185,28 @@ public class AdventureStageManager : MonoBehaviour
                             if (CurrencyManager.Instance != null) CurrencyManager.Instance.AddGold(rewardGold);
                         }
                         if (data.rewardColor != ColorType.None)
-                        {
-                            string colorEngName = data.rewardColor.ToString();
-                            string colorKorName = GetColorNameKorean(data.rewardColor);
-                            rewardResultText += "특수 아이템 획득: " + colorKorName + " 컬러를 얻었습니다!";
-                            if (CurrencyManager.Instance != null) CurrencyManager.Instance.AddColor(colorEngName, 1);
-                        }
+                if (data.rewardColor != ColorType.None)
+                {
+                    Dictionary<ColorType, string> hexMap = new Dictionary<ColorType, string>
+                    {
+                        { ColorType.Red, "#FF3333" },
+                        { ColorType.Green, "#33FF33" },
+                        { ColorType.Yellow, "#FFFF33" },
+                        { ColorType.Blue, "#3333FF" },
+                        { ColorType.Purple, "#A64DFF" }
+                    };
+
+                    string targetHex = "#FFFFFF";
+                    if (hexMap.ContainsKey(data.rewardColor)) targetHex = hexMap[data.rewardColor];
+
+                    string colorEngName = data.rewardColor.ToString();
+                    string colorKorName = GetColorNameKorean(data.rewardColor);
+
+                    rewardResultText += "특수 아이템 획득: <color=" + targetHex + ">" + colorKorName + "</color> 컬러를 얻었습니다!";
+                    if (CurrencyManager.Instance != null) CurrencyManager.Instance.AddColor(colorEngName, 1);
+                }
+
+
 
                         // 💡 [★ 타이핑 효과 연동] 보상 텍스트가 다다닥 찍히도록 변경!
                         uiManager.SetTextTyping(rewardResultText);
@@ -239,51 +230,43 @@ public class AdventureStageManager : MonoBehaviour
                     // [사람 조우 연출] 인스펙터 대사 화면 즉시 출력 및 진짜 컬러 적립
         else if (data.eventType == EventType.MeetPerson)
         {
-            ColorType targetColor = ColorType.None;
-            string colorName = "알 수 없는";
-            string colorHex = "#FFFFFF";
-
-            switch (data.npcType)
+            Dictionary<ColorType, (string name, string hex)> npcColorMap = new Dictionary<ColorType, (string, string)>
             {
-                case NpcType.Warrior: 
-                    targetColor = ColorType.Red; 
-                    colorName = "레드"; 
-                    colorHex = "#FF3333"; 
-                    break;
-                case NpcType.Chief: 
-                    targetColor = ColorType.Green; 
-                    colorName = "그린"; 
-                    colorHex = "#33FF33"; 
-                    break;
-                case NpcType.Healer: 
-                    targetColor = ColorType.Yellow; 
-                    colorName = "옐로"; 
-                    colorHex = "#FFFF33"; 
-                    break;
-                case NpcType.Merchant: 
-                    targetColor = ColorType.Blue; 
-                    colorName = "블루"; 
-                    colorHex = "#3333FF"; 
-                    break;
-                case NpcType.archaeologist: 
-                    targetColor = ColorType.Purple; 
-                    colorName = "퍼플"; 
-                    colorHex = "#A64DFF"; 
-                    break;
+                { ColorType.Red, ("레드", "#FF3333") },
+                { ColorType.Green, ("그린", "#33FF33") },
+                { ColorType.Yellow, ("옐로", "#FFFF33") },
+                { ColorType.Blue, ("블루", "#3333FF") },
+                { ColorType.Purple, ("퍼플", "#A64DFF") }
+            };
+
+            ColorType currentTargetColor = ColorType.None;
+            if (data.npcType == NpcType.Warrior) currentTargetColor = ColorType.Red;
+            else if (data.npcType == NpcType.Chief) currentTargetColor = ColorType.Green;
+            else if (data.npcType == NpcType.Healer) currentTargetColor = ColorType.Yellow;
+            else if (data.npcType == NpcType.Merchant) currentTargetColor = ColorType.Blue;
+            else if (data.npcType == NpcType.archaeologist) currentTargetColor = ColorType.Purple;
+
+            string finalColorName = "알 수 없는";
+            string finalColorHex = "#FFFFFF";
+
+            if (npcColorMap.ContainsKey(currentTargetColor))
+            {
+                finalColorName = npcColorMap[currentTargetColor].name;
+                finalColorHex = npcColorMap[currentTargetColor].hex;
             }
 
-            if (targetColor != ColorType.None && CurrencyManager.Instance != null)
+            if (currentTargetColor != ColorType.None && CurrencyManager.Instance != null)
             {
-                CurrencyManager.Instance.AddColor(targetColor.ToString(), 1);
+                CurrencyManager.Instance.AddColor(currentTargetColor.ToString(), 1);
             }
 
-            string rewardMessage = data.nextActionPrompt + "\n\n<color=" + colorHex + ">" + colorName + "</color> 컬러 1개를 얻었습니다!";
-
+            string rewardMessage = data.nextActionPrompt + "\n\n<color=" + finalColorHex + ">" + finalColorName + "</color> 컬러 1개를 얻었습니다!";
             uiManager.SetTextTyping(rewardMessage);
 
             float npcTime = rewardMessage.Length * uiManager.dialogueSpeed;
             yield return new WaitForSeconds(npcTime);
         }
+
 
 
 
