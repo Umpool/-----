@@ -19,6 +19,8 @@ public class AdventureStageManager : MonoBehaviour
 
     void Start()
     {
+                // 주사위 시드값을 현실 시간(유니크한 값) 기반으로 초기화하여 매번 다른 첫 숫자가 나오게 만듭니다.
+        Random.InitState((int)System.DateTime.Now.Ticks);
         // 버튼 이벤트 연결
         if (uiManager.nextDialogueButton != null) uiManager.nextDialogueButton.onClick.AddListener(() => isNextButtonClicked = true);
         if (uiManager.leftButton != null) uiManager.leftButton.onClick.AddListener(() => isLeftButtonClicked = true);
@@ -106,28 +108,41 @@ public class AdventureStageManager : MonoBehaviour
         }
     }
 
-    private IEnumerator PlayEvent(AdventureScenarioData data)
+        private IEnumerator PlayEvent(AdventureScenarioData data)
     {
         uiManager.SetDirectionButtonsActive(false);
 
-        // [공통] 해당 이벤트에 적혀있는 기본 스토리 대사들을 3초 간격으로 순서대로 출력합니다.
+        // ----------------------------------------------------------------------
+        // 1. [공통 대사 단계] 이벤트에 적혀있는 기본 스토리 대사들을 출력합니다.
+        // ----------------------------------------------------------------------
         for (int i = 0; i < data.eventDialogues.Length; i++)
         {
             uiManager.SetTextTyping(data.eventDialogues[i]);
-            yield return new WaitForSeconds(3.0f);
+
+            // 💡 [★ 타이밍 자동화 계산기 가동!]
+            // 대사 전체 글자 수와 인스펙터의 타자 속도를 곱해서 "정확히 타자가 다 쳐지는 시간"을 계산합니다.
+            float textDisplayTime = data.eventDialogues[i].Length * uiManager.dialogueSpeed;
+            
+            // 타자가 다 다다닥 찍히는 동안 정확하게 기다린 뒤, 글을 읽을 수 있게 1.5초만 살짝 숨을 고릅니다.
+            yield return new WaitForSeconds(textDisplayTime + 1.5f);
         }
 
-        // [분기 처리] 4가지 확률 변수별 개별 행동 기믹
+        // ----------------------------------------------------------------------
+        // 2. [분기 선택 단계] 기본 대사가 모두 끝나면 좌측/우측 버튼이 즉시 등장합니다!
+        // ----------------------------------------------------------------------
         switch (data.eventType)
         {
             case EventType.NothingFound:
+                // 아무것도 찾지 못함: 안내문 즉시 출력 후 전진 루프로 자연스럽게 이행
                 uiManager.SetTextInstant(data.nextActionPrompt);
-                yield return new WaitForSeconds(2.5f);
+                float nothingTime = data.nextActionPrompt.Length * uiManager.dialogueSpeed;
+                yield return new WaitForSeconds(nothingTime + 1.5f);
                 break;
 
             case EventType.RewardItem:
             case EventType.MeetMonster:
             case EventType.MeetPerson:
+                // 안내문을 띄우고 조사/진입 선택지(좌측=확인, 우측=취소)를 즉시 활성화합니다.
                 uiManager.SetTextInstant(data.nextActionPrompt);
                 
                 if (uiManager.nextDialogueButton != null) uiManager.nextDialogueButton.gameObject.SetActive(false);
@@ -141,120 +156,96 @@ public class AdventureStageManager : MonoBehaviour
                 if (uiManager.leftButton != null) uiManager.leftButton.gameObject.SetActive(false);
                 if (uiManager.rightButton != null) uiManager.rightButton.gameObject.SetActive(false);
 
+                // 유저가 선택한 결과에 따른 연출 진행
                 if (isLeftButtonClicked)
                 {
-                    // 🔴 [2번: 일반 재화/상자 조사 기믹]
-                    // 🔴 [2번: 재화 및 컬러 아이템 진짜 지갑에 적립하기]
+                    // [상자 조사 연출] 네가 기획한 2초 고속 순환 온점 연출 발동!
                     if (data.eventType == EventType.RewardItem)
                     {
-                        uiManager.SetTextInstant("아이템을 확인하는중."); yield return new WaitForSeconds(1.0f);
-                        uiManager.SetTextInstant("아이템을 확인하는중.."); yield return new WaitForSeconds(1.0f);
-                        uiManager.SetTextInstant("아이템을 확인하는중..."); yield return new WaitForSeconds(1.0f);
+                        uiManager.SetTextInstant("아이템을 확인하는중."); yield return new WaitForSeconds(0.33f);
+                        uiManager.SetTextInstant("아이템을 확인하는중.."); yield return new WaitForSeconds(0.33f);
+                        uiManager.SetTextInstant("아이템을 확인하는중..."); yield return new WaitForSeconds(0.34f);
+                        uiManager.SetTextInstant("아이템을 확인하는중."); yield return new WaitForSeconds(0.33f);
+                        uiManager.SetTextInstant("아이템을 확인하는중.."); yield return new WaitForSeconds(0.33f);
+                        uiManager.SetTextInstant("아이템을 확인하는중..."); yield return new WaitForSeconds(0.34f);
 
                         string rewardResultText = "성공적으로 조사를 마쳤습니다!\n";
-                        
-                        // 1. 진짜 골드 재화 지급 및 하드디스크 영구 적립
                         if (data.giveGold)
                         {
-                            int rewardGold = Random.Range(1, 21); // 1~20 랜덤 골드 계산
-                            rewardResultText += $"획득 재화: +{rewardGold} 골드\n";
-
-                            // 💡 현재 하드디스크에 저장되어 있는 유저의 기존 골드 총량을 꺼내옵니다.
-                            // (마을 스크립트에서 쓰는 진짜 골드 키 이름이 "Gold"라면 "Gold"로, "PlayerGold"라면 바꿔주면 돼!)
-                            int currentGold = PlayerPrefs.GetInt("Gold", 0); 
-                            
-                            // 기존 돈에 모험에서 방금 번 돈을 더해줍니다.
-                            int updatedGold = currentGold + rewardGold;
-
-                            // 쾅! 더해진 최종 돈을 하드디스크 서랍에 안전하게 저장합니다.
-                            PlayerPrefs.SetInt("Gold", updatedGold);
-                            PlayerPrefs.Save();
-
-                            Debug.Log($"[모험 보상] 골드 적립 완료! 기존: {currentGold}G -> 현재: {updatedGold}G");
+                            int rewardGold = Random.Range(1, 21);
+                            rewardResultText += "획득 재화: +" + rewardGold + " 골드\n";
+                            if (CurrencyManager.Instance != null) CurrencyManager.Instance.AddGold(rewardGold);
                         }
-
-                        // 2. 진짜 5색 컬러 특수 재화 지급 및 하드디스크 영구 적립
                         if (data.rewardColor != ColorType.None)
                         {
-                            string colorName = GetColorNameKorean(data.rewardColor);
-                            rewardResultText += $"특수 아이템 획득: [{colorName} 컬러]를 얻었습니다!";
-
-                            // 💡 컬러 재화도 똑같이 영구 저장소에 종류별로 개수를 누적합니다.
-                            // 예: 서랍 이름은 "Color_Red", "Color_Blue" 형태로 저장됩니다.
-                            string colorSaveKey = "Color_" + data.rewardColor.ToString();
-                            int currentColorCount = PlayerPrefs.GetInt(colorSaveKey, 0);
-                            
-                            PlayerPrefs.SetInt(colorSaveKey, currentColorCount + 1); // 개수 1개 누적
-                            PlayerPrefs.Save();
-
-                            Debug.Log($"[모험 보상] {colorName} 컬러 적립 완료! 현재 개수: {currentColorCount + 1}개");
+                            string colorEngName = data.rewardColor.ToString();
+                            string colorKorName = GetColorNameKorean(data.rewardColor);
+                            rewardResultText += "특수 아이템 획득: " + colorKorName + " 컬러를 얻었습니다!";
+                            if (CurrencyManager.Instance != null) CurrencyManager.Instance.AddColor(colorEngName, 1);
                         }
 
+                        // 결과 텍스트를 화면에 즉시 쏩니다!
                         uiManager.SetTextInstant(rewardResultText);
-
-                        if (uiManager.nextDialogueButton != null) 
-                            uiManager.nextDialogueButton.gameObject.SetActive(false);
                     }
-
-                    // ⚔️ [3번: 몬스터 조우 기믹]
+                    // [몬스터 조우 연출] 네가 살려두라고 한 고마운 2초 워프 대기 시간 유지!
                     else if (data.eventType == EventType.MeetMonster)
                     {
                         uiManager.SetTextInstant("전투에 돌입합니다! 3매치 퍼즐 화면으로 이동 중...");
                         yield return new WaitForSeconds(2.0f);
-                        SceneManager.LoadScene("PuzzleBattleScene"); 
-                        yield break; 
+                        SceneManager.LoadScene("PuzzleBattleScene");
+                        yield break;
                     }
-                    // 👥 [4번: ★ 대폭 확장된 NPC별 맞춤 대사 및 고유 컬러 지급 기믹]
+                    // [사람 조우 연출] 인스펙터 대사 화면 즉시 출력 및 진짜 컬러 적립
                     else if (data.eventType == EventType.MeetPerson)
                     {
-                        string npcResultText = "";
-                        
-                        // 각 NPC 직업에 맞는 고유 멘트와 보상 컬러 매칭 [1]
+                        uiManager.SetTextInstant(data.nextActionPrompt);
+
+                        ColorType targetColor = ColorType.None;
                         switch (data.npcType)
                         {
-                            case NpcType.Chief: // 촌장 (그린)
-                                npcResultText = "[마을 촌장]: \"이 척박한 땅을 개척하느라 수고가 많네. 생명의 온기가 담긴 색을 주지.\"\n\n🎁 [그린 컬러]를 획득했습니다!";
-                                break;
-                            case NpcType.Merchant: // 상인 (블루)
-                                npcResultText = "[방랑 상인]: \"귀한 손님을 만났군요! 제 비밀 보따리에서 나온 신비한 색입니다.\"\n\n🎁 [블루 컬러]를 획득했습니다!";
-                                break;
-                            case NpcType.Healer: // 치료사 (옐로)
-                                npcResultText = "[약초 치료사]: \"여독이 깊어 보이시네요. 마음을 치유해 주는 따뜻한 색을 나눌게요.\"\n\n🎁 [옐로 컬러]를 획득했습니다!";
-                                break;
-                            case NpcType.Warrior: // 전사 (레드)
-                                npcResultText = "[낙향한 전사]: \"네 눈빛에서 뜨거운 투지가 느껴지는군! 나의 열정을 너에게 전하마.\"\n\n🎁 [레드 컬러]를 획득했습니다!";
-                                break;
-                            case NpcType.archaeologist: // 학자 (퍼플)
-                                npcResultText = "[고고학자]: \"수수께끼 가득한 무채색의 비밀을 풀 실마리... 이 신비로운 색을 보게.\"\n\n🎁 [퍼플 컬러]를 획득했습니다!";
-                                break;
-                            default:
-                                npcResultText = "신비한 나그네와 따뜻한 대화를 나누며 유대를 쌓았습니다.";
-                                break;
+                            case NpcType.Warrior:        targetColor = ColorType.Red; break;    
+                            case NpcType.Chief:          targetColor = ColorType.Green; break;  
+                            case NpcType.Healer:         targetColor = ColorType.Yellow; break; 
+                            case NpcType.Merchant:       targetColor = ColorType.Blue; break;   
+                            case NpcType.archaeologist:  targetColor = ColorType.Purple; break; 
                         }
 
-                        uiManager.SetTextInstant(npcResultText);
+                        if (targetColor != ColorType.None && CurrencyManager.Instance != null)
+                        {
+                            CurrencyManager.Instance.AddColor(targetColor.ToString(), 1);
+                        }
                     }
-                    
+
+                    // 💡 [★ 핵심 변경 지점] 보상 결과를 화면에 띄우자마자 
+                    // 종합 버튼을 숨긴 채 컴퓨터의 강제 시간 지연 없이 즉시 이 조건문을 탈출합니다!
                     if (uiManager.nextDialogueButton != null) uiManager.nextDialogueButton.gameObject.SetActive(false);
-                    yield return new WaitForSeconds(3.5f); 
                 }
                 else if (isRightButtonClicked)
                 {
-                    uiManager.SetTextInstant("위험 요소나 번거로운 상황을 무시하고 조용히 발걸음을 옮깁니다.");
-                    yield return new WaitForSeconds(2.5f);
+                    // 🏃 [★ 타이핑 효과 추가] 몬스터 회피 혹은 조사 취소 시 대사
+                    string escapeText = "위험 요소나 번거로운 상황을 무시하고 조용히 발걸음을 옮깁니다.";
+                    uiManager.SetTextTyping(escapeText);
+
+                    // 글자 길이에 맞춰 타이핑이 다 끝날 때까지 정확히 대기합니다.
+                    float escapeTime = escapeText.Length * uiManager.dialogueSpeed;
+                    yield return new WaitForSeconds(escapeTime + 1.2f);
                 }
                 break;
         }
 
         // ----------------------------------------------------------------------
-        // [모험 종료 / 지속 여부를 묻는 최종 순간 선택 단계]
+        // 3. [최종 종착지 결정 단계] 이벤트가 마무리되고 버튼이 켜지는 구간
         // ----------------------------------------------------------------------
-        uiManager.SetTextInstant("이벤트가 마무리되었습니다.\n계속 전진하시겠습니까, 아니면 마을로 돌아가시겠습니까?");
-        
-        // 💡 [★ 수정] 최종 갈림길 선택지가 나올 때도 화면 터치용 종합 버튼을 확실하게 꺼줍니다!
-        if (uiManager.nextDialogueButton != null) uiManager.nextDialogueButton.gameObject.SetActive(false);
+        // 💬 [★ 타이핑 효과 추가] 이벤트 마무리 안내 대사
+        string endChoiceText = "이벤트가 마무리되었습니다.\n계속 전진하시겠습니까, 아니면 마을로 돌아가시겠습니까?";
+        uiManager.SetTextTyping(endChoiceText);
 
-        // 다시 좌측(계속 모험)과 우측(마을 귀환) 버튼을 활성화합니다.
+        // 글자가 다 다다닥 찍히는 타이밍을 계산해서 기다립니다.
+        float endChoiceTime = endChoiceText.Length * uiManager.dialogueSpeed;
+        yield return new WaitForSeconds(endChoiceTime);
+
+        // 💡 타자가 완전히 끝나는 그 0.001초의 순간에 좌측/우측 버튼을 즉시 활성화합니다!
+        if (uiManager.nextDialogueButton != null) uiManager.nextDialogueButton.gameObject.SetActive(false);
         if (uiManager.leftButton != null) uiManager.leftButton.gameObject.SetActive(true);
         if (uiManager.rightButton != null) uiManager.rightButton.gameObject.SetActive(true);
 
@@ -262,33 +253,33 @@ public class AdventureStageManager : MonoBehaviour
         isRightButtonClicked = false;
         while (!isLeftButtonClicked && !isRightButtonClicked) yield return null;
 
-        // 선택이 끝났으니 방향 버튼을 깔끔하게 숨깁니다.
         if (uiManager.leftButton != null) uiManager.leftButton.gameObject.SetActive(false);
         if (uiManager.rightButton != null) uiManager.rightButton.gameObject.SetActive(false);
 
-if (isRightButtonClicked)
-{
-    uiManager.SetTextInstant("모험을 마치고 마을로 발걸음을 돌립니다...");
-    yield return new WaitForSeconds(1.5f);
+        if (isRightButtonClicked)
+        {
+            // 🏡 [★ 타이핑 효과 추가] 마을 귀환 시작 대사
+            string townReturnText = "모험을 마치고 마을로 발걸음을 돌립니다...";
+            uiManager.SetTextTyping(townReturnText);
 
-    // ⭕ [완벽 해결] 마을 씬이 이미 알고 있는 서랍 이름인 "IsReturningFromStorage"에 1을 주입합니다!
-    PlayerPrefs.SetInt("IsReturningFromStorage", 1);
-    PlayerPrefs.Save();
+            float returnTime = townReturnText.Length * uiManager.dialogueSpeed;
+            yield return new WaitForSeconds(returnTime + 0.8f);
 
-    SceneManager.LoadScene("게임초반에서마을까지"); 
-}
-
-
+            SceneManager.LoadScene("게임초반에서마을까지"); 
+        }
         else if (isLeftButtonClicked)
         {
-            uiManager.SetTextInstant("마음을 다잡고 모험을 계속 이어 나갑니다.");
-            yield return new WaitForSeconds(1.5f);
-            
-            // 💡 [★ 중요] 유저가 계속 모험을 하기로 선택했으므로, 
-            // 메인 루프 전진 대기 단계(`while(true)`)로 돌아가기 직전에 종합 버튼을 다시 자연스럽게 켜줍니다.
+            // 🏃 [★ 타이핑 효과 추가] 모험 지속 선택 대사
+            string continueText = "마음을 다잡고 모험을 계속 이어 나갑니다.";
+            uiManager.SetTextTyping(continueText);
+
+            float continueTime = continueText.Length * uiManager.dialogueSpeed;
+            yield return new WaitForSeconds(continueTime + 0.8f);
+
             if (uiManager.nextDialogueButton != null) uiManager.nextDialogueButton.gameObject.SetActive(true);
         }
     }
+
 
 
     // 컬러 이름을 한국어로 변환해주는 편리한 함수
@@ -296,11 +287,11 @@ if (isRightButtonClicked)
     {
         switch (type)
         {
-            case ColorType.Red:    return "적색";
-            case ColorType.Yellow: return "황색";
-            case ColorType.Green:  return "녹색";
-            case ColorType.Blue:   return "청색";
-            case ColorType.Purple: return "자색";
+            case ColorType.Red:    return "레드";
+            case ColorType.Yellow: return "옐로";
+            case ColorType.Green:  return "그린";
+            case ColorType.Blue:   return "블루";
+            case ColorType.Purple: return "퍼플";
             default:               return "알 수 없는 색";
         }
     }
