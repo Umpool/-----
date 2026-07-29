@@ -9,6 +9,11 @@ public class AdventureStageManager : MonoBehaviour
     public TextRPGUIManager uiManager;
     public List<AdventureScenarioData> allEvents = new List<AdventureScenarioData>();
 
+    // 💡 [인스펙터 공용 슬라이더] 모든 이벤트(상자, 전투, NPC 등)가 완벽히 종료된 후 다음 갈림길로 넘어가기 전 대기하는 시간입니다.
+    [Range(0.001f, 2.0f)]
+    public float eventEndDisplayDelay = 2.0f;
+
+
     [Header("[모험 최초 진입 튜토리얼 설정]")]
     [TextArea(2, 5)]
     public string[] introductionDialogues;
@@ -116,15 +121,54 @@ public class AdventureStageManager : MonoBehaviour
             int dice = Random.Range(1, 21);
             EventType chosenType;
 
-            // 1. [재화의 길] NPC 없이 금화 보상에 집중
+            // 1. [재화의 길] 골드 상자 60% / 기타(컬러상자, 몬스터, 허탕) 40% 분배 (NPC 차단)
             if (selectedPathType == 1)
             {
-                // 💡 [레벨링 변수 부활] 재화의 길에서 이벤트를 마주할 때마다 탐험 숙련도(카운트)가 증가합니다!
                 rewardPathCount++;
 
-                if (dice <= 14) chosenType = EventType.RewardItem;
-                else if (dice <= 17) chosenType = EventType.MeetMonster;
-                else chosenType = EventType.NothingFound;
+                // 주사위 1~12번(60%): 계단식 대량 금화 보상 저격 매칭
+                if (dice <= 12)
+                {
+                    List<AdventureScenarioData> goldEvents = allEvents.FindAll(e => e.eventType == EventType.RewardItem && e.rewardColor == ColorType.Gold);
+                    
+                    if (goldEvents.Count > 0)
+                    {
+                        yield return StartCoroutine(PlayEvent(goldEvents[Random.Range(0, goldEvents.Count)]));
+                    }
+                    else
+                    {
+                        Debug.LogWarning("[알림] 인스펙터에 RewardColor가 Gold로 세팅된 이벤트 파일이 리스트에 없습니다.");
+                        yield return new WaitForSeconds(1f);
+                    }
+                    yield return new WaitForSeconds(1.5f);
+                    uiManager.SetDirectionButtonsActive(false);
+                    if (uiManager.nextDialogueButton != null) uiManager.nextDialogueButton.gameObject.SetActive(false);
+                    continue;
+                }
+                // 주사위 13~20번(40%): 컬러 아이템, 몬스터, 허탕이 영리하게 섞여서 나옵니다.
+                else
+                {
+                    if (dice <= 15) // 눈 13, 14, 15: 컬러 아이템 상자방 (물망초 등)
+                    {
+                        List<AdventureScenarioData> itemEvents = allEvents.FindAll(e => e.eventType == EventType.RewardItem && e.rewardColor != ColorType.Gold);
+                        if (itemEvents.Count > 0) yield return StartCoroutine(PlayEvent(itemEvents[Random.Range(0, itemEvents.Count)]));
+                    }
+                    else if (dice <= 18) // 눈 16, 17, 18: 몬스터 전투 돌입 구역
+                    {
+                        List<AdventureScenarioData> monsterEvents = allEvents.FindAll(e => e.eventType == EventType.MeetMonster);
+                        if (monsterEvents.Count > 0) yield return StartCoroutine(PlayEvent(monsterEvents[Random.Range(0, monsterEvents.Count)]));
+                    }
+                    else // 눈 19, 20: 아무 일도 없음 (허탕 방)
+                    {
+                        List<AdventureScenarioData> nothingEvents = allEvents.FindAll(e => e.eventType == EventType.NothingFound);
+                        if (nothingEvents.Count > 0) yield return StartCoroutine(PlayEvent(nothingEvents[Random.Range(0, nothingEvents.Count)]));
+                    }
+
+                    yield return new WaitForSeconds(1.5f);
+                    uiManager.SetDirectionButtonsActive(false);
+                    if (uiManager.nextDialogueButton != null) uiManager.nextDialogueButton.gameObject.SetActive(false);
+                    continue;
+                }
             }
 
             // 2. [동료의 길] NPC 조우 확률 대폭 증가
@@ -231,19 +275,31 @@ public class AdventureStageManager : MonoBehaviour
 
         if (data.eventType == EventType.RewardItem)
         {
-            // 💡 [버그 완벽 수정] 똑같은 보물상자 타입이더라도, 오직 유저가 '재화의 길'을 걷고 있을 때만 금화 텍스트를 띄웁니다!
-            if (selectedPathType == 1)
+            // 🟥 1. 인스펙터 창에서 리워드 컬러를 'Gold'로 지정해 둔 상자방일 때
+            if (data.rewardColor == ColorType.Gold)
             {
                 finalLeftText = "금화를 챙긴다";
                 finalRightText = "지나간다";
             }
+            // 🟦 2. 그 외 물망초, 옥잠난초 같은 진짜 순수 컬러 재료 상자방일 때
             else
             {
-                // 재화의 길이 아닐 때(기본 상태이거나 다른 길일 때)는 원래 기획하신 정석 대사가 나오도록 복구합니다.
-                finalLeftText = "확인한다";
-                finalRightText = "지나간다";
+                // 유저가 재료의 길(3)을 걷고 있다면 맛깔나는 전용 수집 대사 출력
+                if (selectedPathType == 3)
+                {
+                    finalLeftText = "재료를 채집한다";
+                    finalRightText = "지나치다";
+                }
+                else
+                {
+                    finalLeftText = "확인한다";
+                    finalRightText = "지나간다";
+                }
             }
         }
+
+
+
 
 
                 else if (data.eventType == EventType.MeetMonster)
@@ -290,9 +346,13 @@ public class AdventureStageManager : MonoBehaviour
                 if (uiManager.leftButton != null) uiManager.leftButton.gameObject.SetActive(false);
                 if (uiManager.rightButton != null) uiManager.rightButton.gameObject.SetActive(false);
 
-                // 💡 [★ 타이밍 계산] 안내문의 글자 수에 맞춰 타이핑이 완벽히 끝날 때까지 정확하게 대기합니다!
-                float promptDisplayTime = data.nextActionPrompt.Length * uiManager.dialogueSpeed;
-                yield return new WaitForSeconds(promptDisplayTime);
+        // 💬 각 이벤트별 안내문 타이핑이 끝난 직후 가만히 대기합니다.
+        float textDisplayTime = data.nextActionPrompt.Length * uiManager.dialogueSpeed;
+        yield return new WaitForSeconds(textDisplayTime);
+
+
+        // 💡 [★ 기획자 공용 컨트롤러 연동] 모든 이벤트 공통 마감 찰나의 대기 시간 적용!
+        yield return new WaitForSeconds(eventEndDisplayDelay);
 
                 // 🎯 [★ 칼 타이밍!] 글자가 마지막 글자까지 다다닥 찍히는 순간 0초의 망설임도 없이 좌/우 버튼을 뿅 켭니다!
                 if (uiManager.leftButton != null) uiManager.leftButton.gameObject.SetActive(true);
@@ -320,39 +380,41 @@ public class AdventureStageManager : MonoBehaviour
 
                 string rewardResultText = "성공적으로 조사를 마쳤습니다.";
 
-                // [핵심 변경] 1. 유저가 처음에 '재화의 길'을 선택하고 상자를 열었을 때
-                if (selectedPathType == 1)
-                {
-                    // 💡 [계단식 레벨링 반영] 누적 탐험 횟수에 따라 주사위 범위가 완벽하게 점프합니다.
-                    int massiveGold = 0;
+        // 🟥 1. 인스펙터 창(SO)에 리워드 컬러를 'Gold'로 지정해 둔 상자방일 때
+        if (data.rewardColor == ColorType.Gold)
+        {
+            // [계단식 레벨링 반영] 누적 탐험 횟수에 따라 주사위 범위가 완벽하게 점프합니다.
+            int massiveGold = 0;
 
-                    if (rewardPathCount >= 20)
-                    {
-                        // 20번째 상자부터: 200~300골드 (상한선 300 고정)
-                        massiveGold = Random.Range(200, 301);
-                    }
-                    else if (rewardPathCount >= 10)
-                    {
-                        // 10번째 상자부터: 100~150골드
-                        massiveGold = Random.Range(100, 151);
-                    }
-                    else
-                    {
-                        // 1번째~9번째 상자까지: 1~50골드 (보너스 없음)
-                        massiveGold = Random.Range(1, 51);
-                    }
+            if (rewardPathCount >= 20)
+            {
+                // 20번째 상자부터: 200~300골드 (상한선 300 고정)
+                massiveGold = Random.Range(200, 301);
+            }
+            else if (rewardPathCount >= 10)
+            {
+                // 10번째 상자부터: 100~150골드
+                massiveGold = Random.Range(100, 151);
+            }
+            else
+            {
+                // 1번째~9번째 상자까지: 1~50골드
+                massiveGold = Random.Range(1, 51);
+            }
 
-                    rewardResultText += "무작위 금화 발견\n(누적 탐험 " + rewardPathCount + "회): " + massiveGold + "골드를 획득했습니다!";
+            // 가독성 개선: 문장 사이에 줄바꿈(\n\n) 추가
+            rewardResultText += "\n\n무작위 금화 발견!\n" + massiveGold + "골드를 획득했습니다.";
 
-                    if (CurrencyManager.Instance != null)
-                    {
-                        CurrencyManager.Instance.AddGold(massiveGold);
-                    }
+            if (CurrencyManager.Instance != null)
+            {
+                CurrencyManager.Instance.AddGold(massiveGold);
+            }
+        }
 
-                }
 
                 // 2. 재화의 길이 아닐 때 (기본 모험 상태일 때는 기존 기능을 100% 그대로 작동시킵니다)
-                else
+        // 🟦 2. 골드 상자가 아닐 때 (물망초, 옥잠난초 같은 순수 컬러 재화 상자방일 때)
+        else if (data.eventType == EventType.RewardItem)
                 {
                     // 기존 기획데이터(SO)에 골드 지급이 체크되어 있다면 원래대로 작동
                     if (data.giveGold)
@@ -387,14 +449,15 @@ public class AdventureStageManager : MonoBehaviour
                         CurrencyManager.Instance.AddColor(colorEngName, finalGiveAmount);
                     }
                 }
-
                 // 기존 연출 기능 유지: 최종 합쳐진 텍스트를 타이핑 효과로 화면에 뿌려줍니다.
                 uiManager.SetTextTyping(rewardResultText);
 
+                // 타이핑 연출 속도를 글자 수에 맞춰 정확하게 계산하여 가만히 대기합니다.
+                float currentTypingTime = rewardResultText.Length * uiManager.dialogueSpeed;
+                yield return new WaitForSeconds(currentTypingTime);
 
-                        // 글자 길이에 맞춰 타이핑이 완벽하게 끝날 때까지 컴퓨터가 자동으로 계산하여 대기합니다.
-                        float rewardTime = rewardResultText.Length * uiManager.dialogueSpeed;
-                        yield return new WaitForSeconds(rewardTime);
+                // 💡 [인스펙터 변수 연동] 고정 수치 2초 대신, 기획자가 인스펙터에서 지정한 시간만큼 부드럽게 더 대기합니다.
+yield return new WaitForSeconds(eventEndDisplayDelay);
                     }
                     // ⚔️ [2. 몬스터 조우 연출 타이핑화]
                     else if (data.eventType == EventType.MeetMonster)
