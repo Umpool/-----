@@ -52,18 +52,20 @@ public class AdventureStageManager : MonoBehaviour
 
     private IEnumerator AdventureLoop()
     {
+        // 💬 모험씬에 오자마자 첫 대사를 다다닥 띄웁니다.
         string startPathText = "앞에 세 갈래 길의 표지판이 보입니다.\n어느 길로 모험을 시작하시겠습니까?";
         uiManager.SetTextTyping(startPathText);
+
+        // 버튼 3개에 기획하신 3대 갈림길 대사를 주입합니다.
         uiManager.SetButtonTexts("재화의 길", "동료의 길", "재료의 길");
 
-        // 1. 버튼 오브젝트를 화면에 켭니다.
-        // 💡 [안전장치 추가] 대사가 나오는 동안 유저가 투명 버튼을 누르지 못하도록 일시 잠금 처리합니다.
         if (uiManager.leftButton != null) uiManager.leftButton.gameObject.SetActive(true);
         if (uiManager.topButton != null) uiManager.topButton.gameObject.SetActive(true);
         if (uiManager.rightButton != null) uiManager.rightButton.gameObject.SetActive(true);
 
-        // 💡 [★ 긴급 수정: 투명도 즉시 제로 세팅] 
-        // 버튼이 화면에 켜지자마자 유저 눈에 떡하니 보이지 않도록 0.001초 만에 완전히 투명하게 숨겨버립니다.
+                // 1920*1080 크기의 종합버튼이 화면을 막아 클릭을 훔쳐가지 못하도록 강제로 잠시 꺼둡니다.
+        if (uiManager.nextDialogueButton != null) uiManager.nextDialogueButton.gameObject.SetActive(false);
+
         UnityEngine.UI.Image initLeftImg = null; UnityEngine.UI.Image initTopImg = null; UnityEngine.UI.Image initRightImg = null;
         TMPro.TMP_Text initLeftTxt = null; TMPro.TMP_Text initTopTxt = null; TMPro.TMP_Text initRightTxt = null;
 
@@ -71,24 +73,21 @@ public class AdventureStageManager : MonoBehaviour
         if (uiManager.topButton != null) { initTopImg = uiManager.topButton.GetComponent<UnityEngine.UI.Image>(); initTopTxt = uiManager.topButton.GetComponentInChildren<TMPro.TMP_Text>(); }
         if (uiManager.rightButton != null) { initRightImg = uiManager.rightButton.GetComponent<UnityEngine.UI.Image>(); initRightTxt = uiManager.rightButton.GetComponentInChildren<TMPro.TMP_Text>(); }
 
-        if (initLeftImg != null) { Color c = initLeftImg.color; c.a = 0f; initLeftImg.color = c; }
-        if (initTopImg != null) { Color c = initTopImg.color; c.a = 0f; initTopImg.color = c; }
-        if (initRightImg != null) { Color c = initRightImg.color; c.a = 0f; initRightImg.color = c; }
-        if (initLeftTxt != null) { Color c = initLeftTxt.color; c.a = 0f; initLeftTxt.color = c; }
-        if (initTopTxt != null) { Color c = initTopTxt.color; c.a = 0f; initTopTxt.color = c; }
-        if (initRightTxt != null) { Color c = initRightTxt.color; c.a = 0f; initRightTxt.color = c; }
+        if (initLeftImg != null) { initLeftImg.raycastTarget = false; Color c = initLeftImg.color; c.a = 0f; initLeftImg.color = c; }
+        if (initTopImg != null) { initTopImg.raycastTarget = false; Color c = initTopImg.color; c.a = 0f; initTopImg.color = c; }
+        if (initRightImg != null) { initRightImg.raycastTarget = false; Color c = initRightImg.color; c.a = 0f; initRightImg.color = c; }
+        if (initLeftTxt != null) { initLeftTxt.raycastTarget = false; Color c = initLeftTxt.color; c.a = 0f; initLeftTxt.color = c; }
+        if (initTopTxt != null) { initTopTxt.raycastTarget = false; Color c = initTopTxt.color; c.a = 0f; initTopTxt.color = c; }
+        if (initRightTxt != null) { initRightTxt.raycastTarget = false; Color c = initRightTxt.color; c.a = 0f; initRightTxt.color = c; }
 
-        // 2. 대사 타이핑이 완벽하게 끝날 때까지 컴퓨터가 가만히 대기합니다. (이제 버튼은 투명하게 숨어있습니다!)
         float startTextTime = startPathText.Length * uiManager.dialogueSpeed;
         yield return new WaitForSeconds(startTextTime);
-
-        // 3. ✨ 글자가 딱 종료되자마자 숨어있던 버튼들이 왼쪽부터 차례대로 스르르 페이드인 됩니다!
         yield return StartCoroutine(FadeInButtonsSequentially(0.4f));
 
+        // 유저가 세 개 중 하나의 길을 클릭할 때까지 가만히 대기합니다.
         isLeftButtonClicked = false;
         isUpperButtonClicked = false;
         isRightButtonClicked = false;
-
 
 
         while (!isLeftButtonClicked && !isUpperButtonClicked && !isRightButtonClicked)
@@ -96,12 +95,12 @@ public class AdventureStageManager : MonoBehaviour
             yield return null;
         }
 
-        // 유저의 버튼 터치 결과에 따라 확률 제어장치 시스템 번호를 안전하게 기록합니다.
+        // 유저의 터치 결과에 따라 앞서 만든 확률 엔진 번호(1, 2, 3)를 기록합니다.
         if (isLeftButtonClicked) selectedPathType = 1;
         else if (isUpperButtonClicked) selectedPathType = 2;
         else if (isRightButtonClicked) selectedPathType = 3;
 
-        // 갈림길 선택이 완료되었으므로 화면 안의 모든 선택지 버튼들을 깨끗하게 꺼줍니다.
+        // 선택이 끝났으므로 갈림길 버튼 3개를 깔끔하게 꺼줍니다.
         isLeftButtonClicked = false;
         isUpperButtonClicked = false;
         isRightButtonClicked = false;
@@ -110,39 +109,40 @@ public class AdventureStageManager : MonoBehaviour
         if (uiManager.topButton != null) uiManager.topButton.gameObject.SetActive(false);
         if (uiManager.rightButton != null) uiManager.rightButton.gameObject.SetActive(false);
 
-        // -------------------------------------------------------------------------
-        // 여기서부터 기존의 while(true) 모험 루프와 주사위 확률 연산이 자연스럽게 이어집니다.
-        // -------------------------------------------------------------------------
+        // 이제 아래쪽에 적어둔 while (true) 문장으로 진입하여 첫 번째 특화 이벤트가 작동합니다!
         while (true)
         {
 
             int dice = Random.Range(1, 21);
             EventType chosenType;
 
+            // 1. [재화의 길] NPC 없이 금화 보상에 집중
             if (selectedPathType == 1)
             {
+                // 💡 [레벨링 변수 부활] 재화의 길에서 이벤트를 마주할 때마다 탐험 숙련도(카운트)가 증가합니다!
                 rewardPathCount++;
-                currentMaxRewardAmount = 1 + (rewardPathCount / 10);
-                if (currentMaxRewardAmount > 5) currentMaxRewardAmount = 5;
 
                 if (dice <= 14) chosenType = EventType.RewardItem;
                 else if (dice <= 17) chosenType = EventType.MeetMonster;
                 else chosenType = EventType.NothingFound;
             }
+
+            // 2. [동료의 길] NPC 조우 확률 대폭 증가
             else if (selectedPathType == 2)
             {
                 if (dice <= 14) chosenType = EventType.MeetPerson;
                 else if (dice <= 16) chosenType = EventType.MeetMonster;
-                else if (dice <= 18) chosenType = EventType.NothingFound;
-                else chosenType = EventType.RewardItem;
+                else if (dice <= 18) chosenType = EventType.RewardItem;
+                else chosenType = EventType.NothingFound;
             }
+            // 3. [재료의 길] NPC 없이 컬러 재화 획득에 집중
             else if (selectedPathType == 3)
             {
-                if (dice <= 10) chosenType = EventType.MeetMonster;
-                else if (dice <= 16) chosenType = EventType.NothingFound;
-                else if (dice <= 18) chosenType = EventType.RewardItem;
-                else chosenType = EventType.MeetPerson;
+                if (dice <= 10) chosenType = EventType.RewardItem;
+                else if (dice <= 16) chosenType = EventType.MeetMonster;
+                else chosenType = EventType.NothingFound;
             }
+            // 4. 최초 진입 혹은 예외 상황 기본 확률
             else
             {
                 if (dice <= 4) chosenType = EventType.NothingFound;
@@ -150,6 +150,7 @@ public class AdventureStageManager : MonoBehaviour
                 else if (dice <= 10) chosenType = EventType.RewardItem;
                 else chosenType = EventType.MeetPerson;
             }
+
 
 
 
@@ -228,11 +229,23 @@ public class AdventureStageManager : MonoBehaviour
                 string finalLeftText = "선택";
                 string finalRightText = "제외";
 
-                if (data.eventType == EventType.RewardItem)
-                {
-                    finalLeftText = "확인한다";
-                    finalRightText = "지나간다";
-                }
+        if (data.eventType == EventType.RewardItem)
+        {
+            // 💡 [버그 완벽 수정] 똑같은 보물상자 타입이더라도, 오직 유저가 '재화의 길'을 걷고 있을 때만 금화 텍스트를 띄웁니다!
+            if (selectedPathType == 1)
+            {
+                finalLeftText = "금화를 챙긴다";
+                finalRightText = "지나간다";
+            }
+            else
+            {
+                // 재화의 길이 아닐 때(기본 상태이거나 다른 길일 때)는 원래 기획하신 정석 대사가 나오도록 복구합니다.
+                finalLeftText = "확인한다";
+                finalRightText = "지나간다";
+            }
+        }
+
+
                 else if (data.eventType == EventType.MeetMonster)
                 {
                     finalLeftText = "블록을 전개한다.";
@@ -305,16 +318,52 @@ public class AdventureStageManager : MonoBehaviour
                         uiManager.SetTextInstant("아이템을 확인하는중.."); yield return new WaitForSeconds(0.33f);
                         uiManager.SetTextInstant("아이템을 확인하는중..."); yield return new WaitForSeconds(0.34f);
 
-                        string rewardResultText = "성공적으로 조사를 마쳤습니다!\n";
-                        if (data.giveGold)
-                        {
-                            int rewardGold = Random.Range(1, 21);
-                            rewardResultText += "획득 재화: +" + rewardGold + " 골드\n";
-                            if (CurrencyManager.Instance != null) CurrencyManager.Instance.AddGold(rewardGold);
-                        }
-                        if (true)
-                        {
-                            Dictionary<ColorType, string> hexMap = new Dictionary<ColorType, string>
+                string rewardResultText = "성공적으로 조사를 마쳤습니다.";
+
+                // [핵심 변경] 1. 유저가 처음에 '재화의 길'을 선택하고 상자를 열었을 때
+                if (selectedPathType == 1)
+                {
+                    // 💡 [계단식 레벨링 반영] 누적 탐험 횟수에 따라 주사위 범위가 완벽하게 점프합니다.
+                    int massiveGold = 0;
+
+                    if (rewardPathCount >= 20)
+                    {
+                        // 20번째 상자부터: 200~300골드 (상한선 300 고정)
+                        massiveGold = Random.Range(200, 301);
+                    }
+                    else if (rewardPathCount >= 10)
+                    {
+                        // 10번째 상자부터: 100~150골드
+                        massiveGold = Random.Range(100, 151);
+                    }
+                    else
+                    {
+                        // 1번째~9번째 상자까지: 1~50골드 (보너스 없음)
+                        massiveGold = Random.Range(1, 51);
+                    }
+
+                    rewardResultText += "무작위 금화 발견\n(누적 탐험 " + rewardPathCount + "회): " + massiveGold + "골드를 획득했습니다!";
+
+                    if (CurrencyManager.Instance != null)
+                    {
+                        CurrencyManager.Instance.AddGold(massiveGold);
+                    }
+
+                }
+
+                // 2. 재화의 길이 아닐 때 (기본 모험 상태일 때는 기존 기능을 100% 그대로 작동시킵니다)
+                else
+                {
+                    // 기존 기획데이터(SO)에 골드 지급이 체크되어 있다면 원래대로 작동
+                    if (data.giveGold)
+                    {
+                        int rewardGold = Random.Range(1, 21);
+                        rewardResultText += "획득 재화: " + rewardGold + " 골드\n";
+                        if (CurrencyManager.Instance != null) CurrencyManager.Instance.AddGold(rewardGold);
+                    }
+
+                    // 기존에 구현해두신 예쁜 5색 컬러 획득 시스템 완벽 보존
+                    Dictionary<ColorType, string> hexMap = new Dictionary<ColorType, string>
                     {
                         { ColorType.Red, "#FF3333" },
                         { ColorType.Green, "#33FF33" },
@@ -323,28 +372,25 @@ public class AdventureStageManager : MonoBehaviour
                         { ColorType.Purple, "#A64DFF" }
                     };
 
-                            ColorType randomColor = (ColorType)Random.Range(1, 6);
-                            string colorEngName = randomColor.ToString();
-                            string colorKorName = GetColorNameKorean(randomColor);
+                    ColorType randomColor = (ColorType)Random.Range(1, 6);
+                    string colorEngName = randomColor.ToString();
+                    string colorKorName = GetColorNameKorean(randomColor);
 
-                            string targetHex = "#FFFFFF";
-                            if (hexMap.ContainsKey(randomColor)) targetHex = hexMap[randomColor];
+                    string targetHex = "#FFFFFF";
+                    if (hexMap.ContainsKey(randomColor)) targetHex = hexMap[randomColor];
 
-                            int finalGiveAmount = Random.Range(1, currentMaxRewardAmount + 1);
+                    int finalGiveAmount = Random.Range(1, currentMaxRewardAmount + 1);
+                    rewardResultText += "특수 아이템 획득: <color=" + targetHex + ">" + colorKorName + "</color> 컬러를 " + finalGiveAmount + "개 얻었습니다!";
+                    
+                    if (CurrencyManager.Instance != null) 
+                    {
+                        CurrencyManager.Instance.AddColor(colorEngName, finalGiveAmount);
+                    }
+                }
 
-                            rewardResultText += "특수 아이템 획득: <color=" + targetHex + ">" + colorKorName + "</color> 컬러를 " + finalGiveAmount + "개 얻었습니다!";
+                // 기존 연출 기능 유지: 최종 합쳐진 텍스트를 타이핑 효과로 화면에 뿌려줍니다.
+                uiManager.SetTextTyping(rewardResultText);
 
-                            if (CurrencyManager.Instance != null)
-                            {
-                                CurrencyManager.Instance.AddColor(colorEngName, finalGiveAmount);
-                            }
-                        }
-
-
-
-
-                        // 💡 [★ 타이핑 효과 연동] 보상 텍스트가 다다닥 찍히도록 변경!
-                        uiManager.SetTextTyping(rewardResultText);
 
                         // 글자 길이에 맞춰 타이핑이 완벽하게 끝날 때까지 컴퓨터가 자동으로 계산하여 대기합니다.
                         float rewardTime = rewardResultText.Length * uiManager.dialogueSpeed;
@@ -353,7 +399,7 @@ public class AdventureStageManager : MonoBehaviour
                     // ⚔️ [2. 몬스터 조우 연출 타이핑화]
                     else if (data.eventType == EventType.MeetMonster)
                     {
-                        string monsterWarnText = "전투에 돌입합니다! 블록 전개 중...";
+                        string monsterWarnText = "전투에 돌입합니다!\n블록 전개 중...";
                         uiManager.SetTextTyping(monsterWarnText);
 
                         float monsterTime = monsterWarnText.Length * uiManager.dialogueSpeed;
@@ -427,7 +473,7 @@ public class AdventureStageManager : MonoBehaviour
                 else if (isRightButtonClicked)
                 {
                     // 🏃 [★ 타이핑 효과 추가] 몬스터 회피 혹은 조사 취소 시 대사
-                    string escapeText = "위험 요소나 번거로운 상황을 무시하고 조용히 발걸음을 옮깁니다.";
+                    string escapeText = "위험 요소나 번거로운 상황을 무시하고\n조용히 발걸음을 옮깁니다.";
                     uiManager.SetTextTyping(escapeText);
 
                     // 글자 길이에 맞춰 타이핑이 다 끝날 때까지 정확히 대기합니다.
@@ -538,61 +584,43 @@ public class AdventureStageManager : MonoBehaviour
         UnityEngine.UI.Image leftImg = null; UnityEngine.UI.Image topImg = null; UnityEngine.UI.Image rightImg = null;
         TMPro.TMP_Text leftTxt = null; TMPro.TMP_Text topTxt = null; TMPro.TMP_Text rightTxt = null;
 
-        if (uiManager.leftButton != null) 
-        { 
-            leftImg = uiManager.leftButton.GetComponent<UnityEngine.UI.Image>(); 
-            leftTxt = uiManager.leftButton.GetComponentInChildren<TMPro.TMP_Text>(); 
-        }
-        if (uiManager.topButton != null) 
-        { 
-            topImg = uiManager.topButton.GetComponent<UnityEngine.UI.Image>(); 
-            topTxt = uiManager.topButton.GetComponentInChildren<TMPro.TMP_Text>(); 
-        }
-        if (uiManager.rightButton != null) 
-        { 
-            rightImg = uiManager.rightButton.GetComponent<UnityEngine.UI.Image>(); 
-            rightTxt = uiManager.rightButton.GetComponentInChildren<TMPro.TMP_Text>(); 
-        }
+        // 1. 유니티 6 사양에 맞춰 자식 컴포넌트들을 정확하게 찾아냅니다.
+        if (uiManager.leftButton != null) { leftImg = uiManager.leftButton.GetComponent<UnityEngine.UI.Image>(); leftTxt = uiManager.leftButton.GetComponentInChildren<TMPro.TMP_Text>(); }
+        if (uiManager.topButton != null) { topImg = uiManager.topButton.GetComponent<UnityEngine.UI.Image>(); topTxt = uiManager.topButton.GetComponentInChildren<TMPro.TMP_Text>(); }
+        if (uiManager.rightButton != null) { rightImg = uiManager.rightButton.GetComponent<UnityEngine.UI.Image>(); rightTxt = uiManager.rightButton.GetComponentInChildren<TMPro.TMP_Text>(); }
 
-
+        // 2. 대사가 나오는 동안 유저가 누르지 못하도록 '물리적 터치 판정선(raycastTarget)'을 완전히 잠그고 투명화합니다.
         if (leftImg != null) { leftImg.raycastTarget = false; Color c = leftImg.color; c.a = 0f; leftImg.color = c; }
         if (topImg != null) { topImg.raycastTarget = false; Color c = topImg.color; c.a = 0f; topImg.color = c; }
         if (rightImg != null) { rightImg.raycastTarget = false; Color c = rightImg.color; c.a = 0f; rightImg.color = c; }
-        if (leftTxt != null) leftTxt.raycastTarget = false;
-        if (topTxt != null) topTxt.raycastTarget = false;
-        if (rightTxt != null) rightTxt.raycastTarget = false;
+        if (leftTxt != null) { leftTxt.raycastTarget = false; Color c = leftTxt.color; c.a = 0f; leftTxt.color = c; }
+        if (topTxt != null) { topTxt.raycastTarget = false; Color c = topTxt.color; c.a = 0f; topTxt.color = c; }
+        if (rightTxt != null) { rightTxt.raycastTarget = false; Color c = rightTxt.color; c.a = 0f; rightTxt.color = c; }
 
-        float currentTime = 0f;
-        while (currentTime < durationPerButton)
+        // 3. 버튼 3개를 왼쪽부터 순서대로 스르르 페이드인 시키고, 나타난 버튼만 터치 판정선을 해제합니다.
+        for (int i = 0; i < 3; i++)
         {
-            currentTime += Time.deltaTime;
-            float alpha = currentTime / durationPerButton;
-            if (leftImg != null) { Color c = leftImg.color; c.a = alpha; leftImg.color = c; }
-            if (leftTxt != null) { Color c = leftTxt.color; c.a = alpha; leftTxt.color = c; }
-            yield return null;
-        }
-        if (leftBtn != null) leftBtn.interactable = true; // 좌측 버튼 확실하게 클릭 활성화
+            UnityEngine.UI.Image targetImg = null;
+            TMPro.TMP_Text targetTxt = null;
 
-        currentTime = 0f;
-        while (currentTime < durationPerButton)
-        {
-            currentTime += Time.deltaTime;
-            float alpha = currentTime / durationPerButton;
-            if (topImg != null) { Color c = topImg.color; c.a = alpha; topImg.color = c; }
-            if (topTxt != null) { Color c = topTxt.color; c.a = alpha; topTxt.color = c; }
-            yield return null;
-        }
-        if (topBtn != null) topBtn.interactable = true; // 상단 버튼 확실하게 클릭 활성화
+            if (i == 0) { targetImg = leftImg; targetTxt = leftTxt; }
+            else if (i == 1) { targetImg = topImg; targetTxt = topTxt; }
+            else if (i == 2) { targetImg = rightImg; targetTxt = rightTxt; }
 
-        currentTime = 0f;
-        while (currentTime < durationPerButton)
-        {
-            currentTime += Time.deltaTime;
-            float alpha = currentTime / durationPerButton;
-            if (rightImg != null) { Color c = rightImg.color; c.a = alpha; rightImg.color = c; }
-            if (rightTxt != null) { Color c = rightTxt.color; c.a = alpha; rightTxt.color = c; }
-            yield return null;
+            float currentTime = 0f;
+            while (currentTime < durationPerButton)
+            {
+                currentTime += Time.deltaTime;
+                float alpha = Mathf.Clamp01(currentTime / durationPerButton);
+                if (targetImg != null) { Color c = targetImg.color; c.a = alpha; targetImg.color = c; }
+                if (targetTxt != null) { Color c = targetTxt.color; c.a = alpha; targetTxt.color = c; }
+                yield return null;
+            }
+
+            // 스르르 연출이 완전히 끝난 바로 그 순간 터치 판정선(raycastTarget)을 강제로 복구하여 클릭을 활성화합니다.
+            if (targetImg != null) targetImg.raycastTarget = true;
+            if (targetTxt != null) targetTxt.raycastTarget = true;
         }
-        if (rightBtn != null) rightBtn.interactable = true; // 우측 버튼 확실하게 클릭 활성화
     }
+
 }
