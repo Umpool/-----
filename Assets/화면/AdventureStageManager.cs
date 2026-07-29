@@ -140,7 +140,7 @@ public class AdventureStageManager : MonoBehaviour
                         Debug.LogWarning("[알림] 인스펙터에 RewardColor가 Gold로 세팅된 이벤트 파일이 리스트에 없습니다.");
                         yield return new WaitForSeconds(1f);
                     }
-                    yield return new WaitForSeconds(1.5f);
+                    yield return new WaitForSeconds(eventEndDisplayDelay);
                     uiManager.SetDirectionButtonsActive(false);
                     if (uiManager.nextDialogueButton != null) uiManager.nextDialogueButton.gameObject.SetActive(false);
                     continue;
@@ -164,7 +164,7 @@ public class AdventureStageManager : MonoBehaviour
                         if (nothingEvents.Count > 0) yield return StartCoroutine(PlayEvent(nothingEvents[Random.Range(0, nothingEvents.Count)]));
                     }
 
-                    yield return new WaitForSeconds(1.5f);
+                    yield return new WaitForSeconds(eventEndDisplayDelay);
                     uiManager.SetDirectionButtonsActive(false);
                     if (uiManager.nextDialogueButton != null) uiManager.nextDialogueButton.gameObject.SetActive(false);
                     continue;
@@ -213,7 +213,7 @@ public class AdventureStageManager : MonoBehaviour
             }
 
             // 하나의 이벤트가 완벽히 끝나고 유저가 '계속 전진'을 골랐다면, 1.5초 대기 후 다음 전진 유도
-            yield return new WaitForSeconds(1.5f);
+yield return new WaitForSeconds(eventEndDisplayDelay);
 
             // ----------------------------------------------------------------------
             // [정상 전진 대기 단계] 다음 턴으로 넘어가기 위한 연출 세팅
@@ -342,21 +342,20 @@ public class AdventureStageManager : MonoBehaviour
                 // 화면 전체를 덮는 종합 버튼은 방해되지 않게 먼저 꺼둡니다.
                 if (uiManager.nextDialogueButton != null) uiManager.nextDialogueButton.gameObject.SetActive(false);
 
-                // 좌측/우측 버튼도 글자가 다 타이핑되는 동안에는 유저가 누르지 못하게 잠시 숨겨둡니다.
-                if (uiManager.leftButton != null) uiManager.leftButton.gameObject.SetActive(false);
-                if (uiManager.rightButton != null) uiManager.rightButton.gameObject.SetActive(false);
+    // [수정된 코드] 타이핑 종료 후 슬라이더 시간만큼 대기하고 버튼 표시
+    if (uiManager.leftButton != null) uiManager.leftButton.gameObject.SetActive(false);
+    if (uiManager.rightButton != null) uiManager.rightButton.gameObject.SetActive(false);
 
-        // 💬 각 이벤트별 안내문 타이핑이 끝난 직후 가만히 대기합니다.
-        float textDisplayTime = data.nextActionPrompt.Length * uiManager.dialogueSpeed;
-        yield return new WaitForSeconds(textDisplayTime);
+    // 1. 안내문 타이핑 완료 대기
+    float textDisplayTime = data.nextActionPrompt.Length * uiManager.dialogueSpeed;
+    yield return new WaitForSeconds(textDisplayTime);
 
+    // 2. 💡 인스펙터 슬라이더 바와 연동하여 딜레이 적용
+    yield return new WaitForSeconds(eventEndDisplayDelay);
 
-        // 💡 [★ 기획자 공용 컨트롤러 연동] 모든 이벤트 공통 마감 찰나의 대기 시간 적용!
-        yield return new WaitForSeconds(eventEndDisplayDelay);
-
-                // 🎯 [★ 칼 타이밍!] 글자가 마지막 글자까지 다다닥 찍히는 순간 0초의 망설임도 없이 좌/우 버튼을 뿅 켭니다!
-                if (uiManager.leftButton != null) uiManager.leftButton.gameObject.SetActive(true);
-                if (uiManager.rightButton != null) uiManager.rightButton.gameObject.SetActive(true);
+    // 3. ✨ 슬라이더 딜레이 종료 후 버튼 활성화
+    if (uiManager.leftButton != null) uiManager.leftButton.gameObject.SetActive(true);
+    if (uiManager.rightButton != null) uiManager.rightButton.gameObject.SetActive(true);
 
                 isLeftButtonClicked = false;
                 isRightButtonClicked = false;
@@ -525,8 +524,8 @@ yield return new WaitForSeconds(eventEndDisplayDelay);
                         float displayFinishTime = currentText.Length * uiManager.dialogueSpeed;
                         yield return new WaitForSeconds(displayFinishTime);
 
-                        // ⏳ [기획안 완벽 반영] 타이핑이 완전히 끝난 직후부터 정확히 '1.0초'간 더 화면을 멈춰 세웁니다!
-                        yield return new WaitForSeconds(1.0f);
+        // ⏳ 고정 1초 대신 기획자가 인스펙터 슬라이더에서 지정한 찰나의 시간만큼 대기합니다!
+        yield return new WaitForSeconds(eventEndDisplayDelay);
                     }
 
                     if (uiManager.nextDialogueButton != null)
