@@ -60,13 +60,25 @@ public class AdventureStageManager : MonoBehaviour
         while (true)
         {
             // 🎲 1. 주사위를 굴려 30/30/30/10 확률 변수 판단
-            int dice = Random.Range(1, 101);
+            int dice = Random.Range(1, 21);
             EventType chosenType;
 
-            if (dice <= 30)          chosenType = EventType.NothingFound;
-            else if (dice <= 60)     chosenType = EventType.RewardItem;  
-            else if (dice <= 90)     chosenType = EventType.MeetMonster; 
-            else                     chosenType = EventType.MeetPerson;  
+            if (dice <= 4)
+            {
+                chosenType = EventType.NothingFound;
+            }
+            else if (dice <= 7)
+            {
+                chosenType = EventType.MeetMonster;
+            }
+            else if (dice <= 10)
+            {
+                chosenType = EventType.RewardItem;
+            }
+            else
+            {
+                chosenType = EventType.MeetPerson;
+            }
 
             List<AdventureScenarioData> matchedEvents = allEvents.FindAll(e => e.eventType == chosenType);
 
@@ -313,7 +325,7 @@ public class AdventureStageManager : MonoBehaviour
         // 3. [최종 종착지 결정 단계] 이벤트가 마무리되고 버튼이 켜지는 구간
         // ----------------------------------------------------------------------
         // 💬 [★ 타이핑 효과 추가] 이벤트 마무리 안내 대사
-        string endChoiceText = "이벤트가 마무리되었습니다.\n계속 전진하시겠습니까, 아니면 마을로 돌아가시겠습니까?";
+        string endChoiceText = "계속 전진하시겠습니까, 아니면 마을로 돌아가시겠습니까?";
         uiManager.SetTextTyping(endChoiceText);
 
         // 글자가 다 다다닥 찍히는 타이밍을 계산해서 기다립니다.
