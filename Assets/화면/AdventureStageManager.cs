@@ -58,9 +58,9 @@ public class AdventureStageManager : MonoBehaviour
 
         // 1. 버튼 오브젝트를 화면에 켭니다.
         // 💡 [안전장치 추가] 대사가 나오는 동안 유저가 투명 버튼을 누르지 못하도록 일시 잠금 처리합니다.
-        if (uiManager.leftButton != null) uiManager.leftButton.GetComponent<UnityEngine.UI.Button>().interactable = false;
-        if (uiManager.topButton != null) uiManager.topButton.GetComponent<UnityEngine.UI.Button>().interactable = false;
-        if (uiManager.rightButton != null) uiManager.rightButton.GetComponent<UnityEngine.UI.Button>().interactable = false;
+        if (uiManager.leftButton != null) uiManager.leftButton.gameObject.SetActive(true);
+        if (uiManager.topButton != null) uiManager.topButton.gameObject.SetActive(true);
+        if (uiManager.rightButton != null) uiManager.rightButton.gameObject.SetActive(true);
 
         // 💡 [★ 긴급 수정: 투명도 즉시 제로 세팅] 
         // 버튼이 화면에 켜지자마자 유저 눈에 떡하니 보이지 않도록 0.001초 만에 완전히 투명하게 숨겨버립니다.
@@ -537,33 +537,30 @@ public class AdventureStageManager : MonoBehaviour
     {
         UnityEngine.UI.Image leftImg = null; UnityEngine.UI.Image topImg = null; UnityEngine.UI.Image rightImg = null;
         TMPro.TMP_Text leftTxt = null; TMPro.TMP_Text topTxt = null; TMPro.TMP_Text rightTxt = null;
-        UnityEngine.UI.Button leftBtn = null; UnityEngine.UI.Button topBtn = null; UnityEngine.UI.Button rightBtn = null;
 
-        if (uiManager.leftButton != null)
-        {
-            leftImg = uiManager.leftButton.GetComponent<UnityEngine.UI.Image>();
-            leftTxt = uiManager.leftButton.GetComponentInChildren<TMPro.TMP_Text>();
-            leftBtn = uiManager.leftButton.GetComponent<UnityEngine.UI.Button>();
+        if (uiManager.leftButton != null) 
+        { 
+            leftImg = uiManager.leftButton.GetComponent<UnityEngine.UI.Image>(); 
+            leftTxt = uiManager.leftButton.GetComponentInChildren<TMPro.TMP_Text>(); 
         }
-        if (uiManager.topButton != null)
-        {
-            topImg = uiManager.topButton.GetComponent<UnityEngine.UI.Image>();
-            topTxt = uiManager.topButton.GetComponentInChildren<TMPro.TMP_Text>();
-            topBtn = uiManager.topButton.GetComponent<UnityEngine.UI.Button>();
+        if (uiManager.topButton != null) 
+        { 
+            topImg = uiManager.topButton.GetComponent<UnityEngine.UI.Image>(); 
+            topTxt = uiManager.topButton.GetComponentInChildren<TMPro.TMP_Text>(); 
         }
-        if (uiManager.rightButton != null)
-        {
-            rightImg = uiManager.rightButton.GetComponent<UnityEngine.UI.Image>();
-            rightTxt = uiManager.rightButton.GetComponentInChildren<TMPro.TMP_Text>();
-            rightBtn = uiManager.rightButton.GetComponent<UnityEngine.UI.Button>();
+        if (uiManager.rightButton != null) 
+        { 
+            rightImg = uiManager.rightButton.GetComponent<UnityEngine.UI.Image>(); 
+            rightTxt = uiManager.rightButton.GetComponentInChildren<TMPro.TMP_Text>(); 
         }
 
-        if (leftImg != null) { Color c = leftImg.color; c.a = 0f; leftImg.color = c; }
-        if (topImg != null) { Color c = topImg.color; c.a = 0f; topImg.color = c; }
-        if (rightImg != null) { Color c = rightImg.color; c.a = 0f; rightImg.color = c; }
-        if (leftTxt != null) { Color c = leftTxt.color; c.a = 0f; leftTxt.color = c; }
-        if (topTxt != null) { Color c = topTxt.color; c.a = 0f; topTxt.color = c; }
-        if (rightTxt != null) { Color c = rightTxt.color; c.a = 0f; rightTxt.color = c; }
+
+        if (leftImg != null) { leftImg.raycastTarget = false; Color c = leftImg.color; c.a = 0f; leftImg.color = c; }
+        if (topImg != null) { topImg.raycastTarget = false; Color c = topImg.color; c.a = 0f; topImg.color = c; }
+        if (rightImg != null) { rightImg.raycastTarget = false; Color c = rightImg.color; c.a = 0f; rightImg.color = c; }
+        if (leftTxt != null) leftTxt.raycastTarget = false;
+        if (topTxt != null) topTxt.raycastTarget = false;
+        if (rightTxt != null) rightTxt.raycastTarget = false;
 
         float currentTime = 0f;
         while (currentTime < durationPerButton)
