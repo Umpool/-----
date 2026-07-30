@@ -68,7 +68,7 @@ public class AdventureStageManager : MonoBehaviour
         if (uiManager.topButton != null) uiManager.topButton.gameObject.SetActive(true);
         if (uiManager.rightButton != null) uiManager.rightButton.gameObject.SetActive(true);
 
-                // 1920*1080 크기의 종합버튼이 화면을 막아 클릭을 훔쳐가지 못하도록 강제로 잠시 꺼둡니다.
+        // 1920*1080 크기의 종합버튼이 화면을 막아 클릭을 훔쳐가지 못하도록 강제로 잠시 꺼둡니다.
         if (uiManager.nextDialogueButton != null) uiManager.nextDialogueButton.gameObject.SetActive(false);
 
         UnityEngine.UI.Image initLeftImg = null; UnityEngine.UI.Image initTopImg = null; UnityEngine.UI.Image initRightImg = null;
@@ -130,7 +130,7 @@ public class AdventureStageManager : MonoBehaviour
                 if (dice <= 12)
                 {
                     List<AdventureScenarioData> goldEvents = allEvents.FindAll(e => e.eventType == EventType.RewardItem && e.rewardColor == ColorType.Gold);
-                    
+
                     if (goldEvents.Count > 0)
                     {
                         yield return StartCoroutine(PlayEvent(goldEvents[Random.Range(0, goldEvents.Count)]));
@@ -213,7 +213,7 @@ public class AdventureStageManager : MonoBehaviour
             }
 
             // 하나의 이벤트가 완벽히 끝나고 유저가 '계속 전진'을 골랐다면, 1.5초 대기 후 다음 전진 유도
-yield return new WaitForSeconds(eventEndDisplayDelay);
+            yield return new WaitForSeconds(eventEndDisplayDelay);
 
             // ----------------------------------------------------------------------
             // [정상 전진 대기 단계] 다음 턴으로 넘어가기 위한 연출 세팅
@@ -261,8 +261,8 @@ yield return new WaitForSeconds(eventEndDisplayDelay);
             case EventType.NothingFound:
                 uiManager.SetTextTyping(data.nextActionPrompt);
                 float nothingTime = data.nextActionPrompt.Length * uiManager.dialogueSpeed;
-                yield return new WaitForSeconds(nothingTime + 1.5f);
-                break;
+                yield return new WaitForSeconds(nothingTime);
+                yield return new WaitForSeconds(eventEndDisplayDelay); break;
 
 
             case EventType.RewardItem:
@@ -273,30 +273,30 @@ yield return new WaitForSeconds(eventEndDisplayDelay);
                 string finalLeftText = "선택";
                 string finalRightText = "제외";
 
-        if (data.eventType == EventType.RewardItem)
-        {
-            // 🟥 1. 인스펙터 창에서 리워드 컬러를 'Gold'로 지정해 둔 상자방일 때
-            if (data.rewardColor == ColorType.Gold)
-            {
-                finalLeftText = "금화를 챙긴다";
-                finalRightText = "지나간다";
-            }
-            // 🟦 2. 그 외 물망초, 옥잠난초 같은 진짜 순수 컬러 재료 상자방일 때
-            else
-            {
-                // 유저가 재료의 길(3)을 걷고 있다면 맛깔나는 전용 수집 대사 출력
-                if (selectedPathType == 3)
+                if (data.eventType == EventType.RewardItem)
                 {
-                    finalLeftText = "재료를 채집한다";
-                    finalRightText = "지나치다";
+                    // 🟥 1. 인스펙터 창에서 리워드 컬러를 'Gold'로 지정해 둔 상자방일 때
+                    if (data.rewardColor == ColorType.Gold)
+                    {
+                        finalLeftText = "금화를 챙긴다";
+                        finalRightText = "지나간다";
+                    }
+                    // 🟦 2. 그 외 물망초, 옥잠난초 같은 진짜 순수 컬러 재료 상자방일 때
+                    else
+                    {
+                        // 유저가 재료의 길(3)을 걷고 있다면 맛깔나는 전용 수집 대사 출력
+                        if (selectedPathType == 3)
+                        {
+                            finalLeftText = "재료를 채집한다";
+                            finalRightText = "지나치다";
+                        }
+                        else
+                        {
+                            finalLeftText = "확인한다";
+                            finalRightText = "지나간다";
+                        }
+                    }
                 }
-                else
-                {
-                    finalLeftText = "확인한다";
-                    finalRightText = "지나간다";
-                }
-            }
-        }
 
 
 
@@ -342,20 +342,20 @@ yield return new WaitForSeconds(eventEndDisplayDelay);
                 // 화면 전체를 덮는 종합 버튼은 방해되지 않게 먼저 꺼둡니다.
                 if (uiManager.nextDialogueButton != null) uiManager.nextDialogueButton.gameObject.SetActive(false);
 
-    // [수정된 코드] 타이핑 종료 후 슬라이더 시간만큼 대기하고 버튼 표시
-    if (uiManager.leftButton != null) uiManager.leftButton.gameObject.SetActive(false);
-    if (uiManager.rightButton != null) uiManager.rightButton.gameObject.SetActive(false);
+                // [수정된 코드] 타이핑 종료 후 슬라이더 시간만큼 대기하고 버튼 표시
+                if (uiManager.leftButton != null) uiManager.leftButton.gameObject.SetActive(false);
+                if (uiManager.rightButton != null) uiManager.rightButton.gameObject.SetActive(false);
 
-    // 1. 안내문 타이핑 완료 대기
-    float textDisplayTime = data.nextActionPrompt.Length * uiManager.dialogueSpeed;
-    yield return new WaitForSeconds(textDisplayTime);
+                // 1. 안내문 타이핑 완료 대기
+                float textDisplayTime = data.nextActionPrompt.Length * uiManager.dialogueSpeed;
+                yield return new WaitForSeconds(textDisplayTime);
 
-    // 2. 💡 인스펙터 슬라이더 바와 연동하여 딜레이 적용
-    yield return new WaitForSeconds(eventEndDisplayDelay);
+                // 2. 💡 인스펙터 슬라이더 바와 연동하여 딜레이 적용
+                yield return new WaitForSeconds(eventEndDisplayDelay);
 
-    // 3. ✨ 슬라이더 딜레이 종료 후 버튼 활성화
-    if (uiManager.leftButton != null) uiManager.leftButton.gameObject.SetActive(true);
-    if (uiManager.rightButton != null) uiManager.rightButton.gameObject.SetActive(true);
+                // 3. ✨ 슬라이더 딜레이 종료 후 버튼 활성화
+                if (uiManager.leftButton != null) uiManager.leftButton.gameObject.SetActive(true);
+                if (uiManager.rightButton != null) uiManager.rightButton.gameObject.SetActive(true);
 
                 isLeftButtonClicked = false;
                 isRightButtonClicked = false;
@@ -377,54 +377,54 @@ yield return new WaitForSeconds(eventEndDisplayDelay);
                         uiManager.SetTextInstant("아이템을 확인하는중.."); yield return new WaitForSeconds(0.33f);
                         uiManager.SetTextInstant("아이템을 확인하는중..."); yield return new WaitForSeconds(0.34f);
 
-                string rewardResultText = "성공적으로 조사를 마쳤습니다.";
+                        string rewardResultText = "성공적으로 조사를 마쳤습니다.";
 
-        // 🟥 1. 인스펙터 창(SO)에 리워드 컬러를 'Gold'로 지정해 둔 상자방일 때
-        if (data.rewardColor == ColorType.Gold)
-        {
-            // [계단식 레벨링 반영] 누적 탐험 횟수에 따라 주사위 범위가 완벽하게 점프합니다.
-            int massiveGold = 0;
+                        // 🟥 1. 인스펙터 창(SO)에 리워드 컬러를 'Gold'로 지정해 둔 상자방일 때
+                        if (data.rewardColor == ColorType.Gold)
+                        {
+                            // [계단식 레벨링 반영] 누적 탐험 횟수에 따라 주사위 범위가 완벽하게 점프합니다.
+                            int massiveGold = 0;
 
-            if (rewardPathCount >= 20)
-            {
-                // 20번째 상자부터: 200~300골드 (상한선 300 고정)
-                massiveGold = Random.Range(200, 301);
-            }
-            else if (rewardPathCount >= 10)
-            {
-                // 10번째 상자부터: 100~150골드
-                massiveGold = Random.Range(100, 151);
-            }
-            else
-            {
-                // 1번째~9번째 상자까지: 1~50골드
-                massiveGold = Random.Range(1, 51);
-            }
+                            if (rewardPathCount >= 20)
+                            {
+                                // 20번째 상자부터: 200~300골드 (상한선 300 고정)
+                                massiveGold = Random.Range(200, 301);
+                            }
+                            else if (rewardPathCount >= 10)
+                            {
+                                // 10번째 상자부터: 100~150골드
+                                massiveGold = Random.Range(100, 151);
+                            }
+                            else
+                            {
+                                // 1번째~9번째 상자까지: 1~50골드
+                                massiveGold = Random.Range(1, 51);
+                            }
 
-            // 가독성 개선: 문장 사이에 줄바꿈(\n\n) 추가
-            rewardResultText += "\n\n무작위 금화 발견!\n" + massiveGold + "골드를 획득했습니다.";
+                            // 가독성 개선: 문장 사이에 줄바꿈(\n\n) 추가
+                            rewardResultText += "\n\n무작위 금화 발견!\n" + massiveGold + "골드를 획득했습니다.";
 
-            if (CurrencyManager.Instance != null)
-            {
-                CurrencyManager.Instance.AddGold(massiveGold);
-            }
-        }
+                            if (CurrencyManager.Instance != null)
+                            {
+                                CurrencyManager.Instance.AddGold(massiveGold);
+                            }
+                        }
 
 
-                // 2. 재화의 길이 아닐 때 (기본 모험 상태일 때는 기존 기능을 100% 그대로 작동시킵니다)
-        // 🟦 2. 골드 상자가 아닐 때 (물망초, 옥잠난초 같은 순수 컬러 재화 상자방일 때)
-        else if (data.eventType == EventType.RewardItem)
-                {
-                    // 기존 기획데이터(SO)에 골드 지급이 체크되어 있다면 원래대로 작동
-                    if (data.giveGold)
-                    {
-                        int rewardGold = Random.Range(1, 21);
-                        rewardResultText += "획득 재화: " + rewardGold + " 골드\n";
-                        if (CurrencyManager.Instance != null) CurrencyManager.Instance.AddGold(rewardGold);
-                    }
+                        // 2. 재화의 길이 아닐 때 (기본 모험 상태일 때는 기존 기능을 100% 그대로 작동시킵니다)
+                        // 🟦 2. 골드 상자가 아닐 때 (물망초, 옥잠난초 같은 순수 컬러 재화 상자방일 때)
+                        else if (data.eventType == EventType.RewardItem)
+                        {
+                            // 기존 기획데이터(SO)에 골드 지급이 체크되어 있다면 원래대로 작동
+                            if (data.giveGold)
+                            {
+                                int rewardGold = Random.Range(1, 21);
+                                rewardResultText += "획득 재화: " + rewardGold + " 골드\n";
+                                if (CurrencyManager.Instance != null) CurrencyManager.Instance.AddGold(rewardGold);
+                            }
 
-                    // 기존에 구현해두신 예쁜 5색 컬러 획득 시스템 완벽 보존
-                    Dictionary<ColorType, string> hexMap = new Dictionary<ColorType, string>
+                            // 기존에 구현해두신 예쁜 5색 컬러 획득 시스템 완벽 보존
+                            Dictionary<ColorType, string> hexMap = new Dictionary<ColorType, string>
                     {
                         { ColorType.Red, "#FF3333" },
                         { ColorType.Green, "#33FF33" },
@@ -433,30 +433,30 @@ yield return new WaitForSeconds(eventEndDisplayDelay);
                         { ColorType.Purple, "#A64DFF" }
                     };
 
-                    ColorType randomColor = (ColorType)Random.Range(1, 6);
-                    string colorEngName = randomColor.ToString();
-                    string colorKorName = GetColorNameKorean(randomColor);
+                            ColorType randomColor = (ColorType)Random.Range(1, 6);
+                            string colorEngName = randomColor.ToString();
+                            string colorKorName = GetColorNameKorean(randomColor);
 
-                    string targetHex = "#FFFFFF";
-                    if (hexMap.ContainsKey(randomColor)) targetHex = hexMap[randomColor];
+                            string targetHex = "#FFFFFF";
+                            if (hexMap.ContainsKey(randomColor)) targetHex = hexMap[randomColor];
 
-                    int finalGiveAmount = Random.Range(1, currentMaxRewardAmount + 1);
-                    rewardResultText += "특수 아이템 획득: <color=" + targetHex + ">" + colorKorName + "</color> 컬러를 " + finalGiveAmount + "개 얻었습니다!";
-                    
-                    if (CurrencyManager.Instance != null) 
-                    {
-                        CurrencyManager.Instance.AddColor(colorEngName, finalGiveAmount);
-                    }
-                }
-                // 기존 연출 기능 유지: 최종 합쳐진 텍스트를 타이핑 효과로 화면에 뿌려줍니다.
-                uiManager.SetTextTyping(rewardResultText);
+                            int finalGiveAmount = Random.Range(1, currentMaxRewardAmount + 1);
+                            rewardResultText += "특수 아이템 획득: <color=" + targetHex + ">" + colorKorName + "</color> 컬러를 " + finalGiveAmount + "개 얻었습니다!";
 
-                // 타이핑 연출 속도를 글자 수에 맞춰 정확하게 계산하여 가만히 대기합니다.
-                float currentTypingTime = rewardResultText.Length * uiManager.dialogueSpeed;
-                yield return new WaitForSeconds(currentTypingTime);
+                            if (CurrencyManager.Instance != null)
+                            {
+                                CurrencyManager.Instance.AddColor(colorEngName, finalGiveAmount);
+                            }
+                        }
+                        // 기존 연출 기능 유지: 최종 합쳐진 텍스트를 타이핑 효과로 화면에 뿌려줍니다.
+                        uiManager.SetTextTyping(rewardResultText);
 
-                // 💡 [인스펙터 변수 연동] 고정 수치 2초 대신, 기획자가 인스펙터에서 지정한 시간만큼 부드럽게 더 대기합니다.
-yield return new WaitForSeconds(eventEndDisplayDelay);
+                        // 타이핑 연출 속도를 글자 수에 맞춰 정확하게 계산하여 가만히 대기합니다.
+                        float currentTypingTime = rewardResultText.Length * uiManager.dialogueSpeed;
+                        yield return new WaitForSeconds(currentTypingTime);
+
+                        // 💡 [인스펙터 변수 연동] 고정 수치 2초 대신, 기획자가 인스펙터에서 지정한 시간만큼 부드럽게 더 대기합니다.
+                        yield return new WaitForSeconds(eventEndDisplayDelay);
                     }
                     // ⚔️ [2. 몬스터 조우 연출 타이핑화]
                     else if (data.eventType == EventType.MeetMonster)
@@ -515,18 +515,14 @@ yield return new WaitForSeconds(eventEndDisplayDelay);
 
 
                     // 💡 [★ 타이밍 정밀 개조] 보상이나 NPC 대사 글자가 다 쳐진 후 1초 더 보여주기
+                    // 💡 [정석 타이밍 교체] 타이핑은 끝까지 완벽히 출력하고, 종료 후 슬라이더 딜레이를 적용합니다!
                     if (data.eventType == EventType.RewardItem || data.eventType == EventType.MeetPerson)
                     {
-                        // 보물상자일 때는 uiManager에 담긴 현재 화면 글자를 그대로 쓰고, 사람일 때는 인스펙터 대사를 가져옵니다.
                         string currentText = (data.eventType == EventType.RewardItem) ? uiManager.logText.text : data.nextActionPrompt;
-
-                        // 타자가 다 끝날 때까지 컴퓨터가 자동으로 연산하여 안전하게 대기합니다.
-                        float displayFinishTime = currentText.Length * uiManager.dialogueSpeed;
-                        yield return new WaitForSeconds(displayFinishTime);
-
-        // ⏳ 고정 1초 대신 기획자가 인스펙터 슬라이더에서 지정한 찰나의 시간만큼 대기합니다!
-        yield return new WaitForSeconds(eventEndDisplayDelay);
+                        // 2. ✨ 타이핑이 딱 끝난 바로 그 순간부터 기획자가 슬라이더에서 지정한 찰나의 시간만큼 대기합니다!
+                        yield return new WaitForSeconds(eventEndDisplayDelay);
                     }
+
 
                     if (uiManager.nextDialogueButton != null)
                         uiManager.nextDialogueButton.gameObject.SetActive(false);
@@ -540,7 +536,9 @@ yield return new WaitForSeconds(eventEndDisplayDelay);
 
                     // 글자 길이에 맞춰 타이핑이 다 끝날 때까지 정확히 대기합니다.
                     float escapeTime = escapeText.Length * uiManager.dialogueSpeed;
-                    yield return new WaitForSeconds(escapeTime + 1.2f);
+                    // 타이핑 연출이 끝난 직후, 인스펙터 슬라이더 초만큼 정밀 대기합니다!
+                    yield return new WaitForSeconds(escapeTime);
+                    yield return new WaitForSeconds(eventEndDisplayDelay);
                 }
                 break;
         }
