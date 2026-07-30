@@ -11,6 +11,20 @@ public class CurrencyManager : MonoBehaviour
 
     private const string GoldSaveKey = "User_Gold_Data"; // 저장 키값
     private int currentGold = 0;
+        // [컬러 재화 내부 저장 변수]
+    private int redColor = 0;
+    private int yellowColor = 0;
+    private int greenColor = 0;
+    private int blueColor = 0;
+    private int purpleColor = 0;
+
+    // 외부에서 각각의 컬러 개수를 읽을 수 있도록 통로 열기
+    public int RedColor => redColor;
+    public int YellowColor => yellowColor;
+    public int GreenColor => greenColor;
+    public int BlueColor => blueColor;
+    public int PurpleColor => purpleColor;
+
 
     // 외부에서 현재 골드를 읽을 수 있는 프로퍼티
     public int CurrentGold => currentGold;
@@ -37,6 +51,33 @@ public class CurrencyManager : MonoBehaviour
         SaveGold();
         NotifyGoldChanged();
     }
+        // 모험 및 전투 승리 시 컬러 재화를 적립해주는 함수
+    public void AddColor(string colorType, int amount)
+    {
+        // 들어온 색상 텍스트 문자에 따라 알맞은 서랍에 더해줍니다.
+        if (colorType == "Red") redColor += amount;
+        else if (colorType == "Yellow") yellowColor += amount;
+        else if (colorType == "Green") greenColor += amount;
+        else if (colorType == "Blue") blueColor += amount;
+        else if (colorType == "Purple") purpleColor += amount;
+
+        // 즉시 하드디스크에 영구 저장을 보냅니다.
+        PlayerPrefs.SetInt("User_Color_" + colorType, PlayerPrefs.GetInt("User_Color_" + colorType, 0) + amount);
+        PlayerPrefs.Save();
+
+        Debug.Log("[CurrencyManager] " + colorType + " 컬러가 +" + amount + "개 획득 및 영구 저장되었습니다.");
+    }
+
+    // 게임 시작 시 하드디스크 서랍에서 예전에 모아둔 컬러 개수를 로드하는 함수
+    public void LoadColors()
+    {
+        redColor = PlayerPrefs.GetInt("User_Color_Red", 0);
+        yellowColor = PlayerPrefs.GetInt("User_Color_Yellow", 0);
+        greenColor = PlayerPrefs.GetInt("User_Color_Green", 0);
+        blueColor = PlayerPrefs.GetInt("User_Color_Blue", 0);
+        purpleColor = PlayerPrefs.GetInt("User_Color_Purple", 0);
+    }
+
 
     // 골드를 사용하는 함수 (아이템 구매 등)
     // 반환값(bool): 골드가 충분해서 소비에 성공했는지 여부
