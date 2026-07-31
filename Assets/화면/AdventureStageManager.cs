@@ -1,10 +1,12 @@
 using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
-using UnityEngine.SceneManagement; // 씬 전환을 위해 추가!
+using UnityEngine.SceneManagement;
 
 public class AdventureStageManager : MonoBehaviour
 {
+    public string currentTargetMonster = "";
+
     [Header("[연결할 매니저 및 데이터 창고]")]
     public TextRPGUIManager uiManager;
     public List<AdventureScenarioData> allEvents = new List<AdventureScenarioData>();
