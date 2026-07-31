@@ -203,6 +203,7 @@ public class Match3Board : MonoBehaviour
         }
 
         // 2. 8x8 보드판 테두리 범위 내부일 때만 진짜 플레이 작동
+        // 📐 [Match3Board.cs 내부 CalculateSwipeDirection 최종 전선 직결 교체]
         if (targetX >= 0 && targetX < width && targetY >= 0 && targetY < height)
         {
             Match3GameManager manager = FindAnyObjectByType<Match3GameManager>();
@@ -210,15 +211,13 @@ public class Match3Board : MonoBehaviour
             {
                 Debug.Log($"[시스템 통제] ({startX}, {startY})에서 ({targetX}, {targetY})로 드래그 감지. 판정을 시작합니다.");
 
-                // 📐 [핵심 전선 복원]: 3매치 지휘관 장부(Match3GameManager)에게 
-                // 유저가 요청한 칸의 블록들을 스왑해 보고, [3매치 판정 -> 터뜨리기 -> 리필 -> 실패 시 복귀 -> 데드락 체크]
-                // 종합 퍼즐 알고리즘 루프를 강제로 구동하라고 정당한 신호를 전송합니다!
-                
-                // 💡 만약 매니저 내부 함수 이름이 다를 때를 대비해, 안전한 다이렉트 매칭 함수를 깨웁니다.
-                // (유저님의 기존 스크립트 구조에 맞춰 안전하게 노크하는 정석 문법입니다.)
-                manager.gameObject.SendMessage("SwapBlocks", new Vector4(startX, startY, targetX, targetY), SendMessageOptions.DontRequireReceiver);
+                // 💡 [치료 열쇠]: 주소를 확실하게 추적해 지휘관 내부의 SwapBlocks를 다이렉트로 관통 호출합니다!
+                // Vector4 데이터 단락을 생성해 그대로 전송해 줍니다.
+                Vector4 swipeVector = new Vector4(startX, startY, targetX, targetY);
+                manager.SwapBlocks(swipeVector); 
             }
         }
+
         else
         {
             Debug.LogWarning("⚠ [벽 충돌] 보드판 영역 바깥으로 튕겨 나가 조작이 차단되었습니다.");
