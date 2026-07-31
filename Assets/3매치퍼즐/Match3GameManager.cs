@@ -7,6 +7,10 @@ public class Match3GameManager : MonoBehaviour
     public TMPro.TMP_Text turnText;
     public TMPro.TMP_Text comboText;
 
+    [Header("전투 동기화 데이터")]
+    public string battleMonsterName = ""; // 모험 씬에서 넘겨받은 진짜 몬스터 이름이 저장될 서랍
+
+
     [Header("--- [핵심] 몬스터 및 HP바 프리팹 세팅 ---")]
     public GameObject hpSliderPrefab;       // 프로젝트 창의 HP 바 프리팹 (MonsterHPSlider)
     public Transform uiCanvasTransform;     // UI가 스폰될 Canvas 연결
@@ -21,11 +25,11 @@ public class Match3GameManager : MonoBehaviour
     private Match3Referee referee;
 
     // 게임 핵심 상태 제어 변수
-    private int currentTurn = 20; 
+    private int currentTurn = 20;
     private int currentCombo = 0;
     private float monsterHP = 500f;
     private float maxMonsterHP = 500f;
-    private bool isProcessing = false; 
+    private bool isProcessing = false;
 
     public bool GetIsProcessing() { return isProcessing; }
 
@@ -37,8 +41,25 @@ public class Match3GameManager : MonoBehaviour
 
     void Start()
     {
+        // 🚀 [행동대장 연결 통로 개통!] 내 오브젝트에 같이 붙어 있는 Match3Board 컴포넌트를 자동으로 꽉 잡습니다.
+        board = GetComponent<Match3Board>();
+        // 💡 [핵심 추가] 모험 씬에서 파괴되지 않고 살아남은 StageManager 서랍을 맵에서 수색합니다.
+        AdventureStageManager stageManager = FindAnyObjectByType<AdventureStageManager>();
+
+        if (stageManager != null)
+        {
+            // 모험 매니저가 가지고 있던 진짜 몬스터 이름(블랙, 그레이, 화이트 등)을 복사해 옵니다.
+            battleMonsterName = stageManager.currentTargetMonster;
+            Debug.Log($"[3매치 전투 구동] '{battleMonsterName}' 전투 데이터를 성공적으로 불러왔습니다.");
+        }
+        else
+        {
+            // 유니티 에디터에서 '3매치' 씬만 단독으로 플레이 버튼을 눌러 테스트할 때를 위한 안전장치입니다.
+            battleMonsterName = "테스트용 기본 몬스터";
+            Debug.LogWarning("AdventureStageManager를 찾을 수 없어 기본 몬스터 이름으로 대체합니다.");
+        }
         // 게임 시작 시 몬스터를 먼저 안전하게 스폰하고 체력 시스템을 엮어줍니다.
-        SpawnMonsterAndSetupHPBar(); 
+        SpawnMonsterAndSetupHPBar();
         InitMatch3Battle();
     }
 
@@ -65,7 +86,7 @@ public class Match3GameManager : MonoBehaviour
         if (monsterPrefabs == null || monsterPrefabs.Length == 0) return;
 
         // 등록된 몬스터 중 무작위로 한 마리를 선택합니다.
-        int selectIndex = Random.Range(0, monsterPrefabs.Length); 
+        int selectIndex = Random.Range(0, monsterPrefabs.Length);
         GameObject selectedMonsterPrefab = monsterPrefabs[selectIndex];
 
         if (selectedMonsterPrefab != null && monsterSpawnPoint != null)
@@ -77,10 +98,10 @@ public class Match3GameManager : MonoBehaviour
             if (hpSliderPrefab != null && uiCanvasTransform != null)
             {
                 GameObject spawnedSliderObj = Instantiate(hpSliderPrefab, uiCanvasTransform);
-                
+
                 // 3. 동적으로 태어난 슬라이더와 컬러 Fill 이미지를 코드가 스스로 찾아 매핑합니다.
                 monsterHPSlider = spawnedSliderObj.GetComponent<UnityEngine.UI.Slider>();
-                
+
                 Transform fillTransform = spawnedSliderObj.transform.Find("Fill Area/Fill");
                 if (fillTransform != null)
                 {
@@ -91,7 +112,7 @@ public class Match3GameManager : MonoBehaviour
                 UnityEngine.RectTransform rect = spawnedSliderObj.GetComponent<UnityEngine.RectTransform>();
                 if (rect != null)
                 {
-                    rect.anchoredPosition = new Vector2(0, 400); 
+                    rect.anchoredPosition = new Vector2(0, 400);
                 }
             }
         }
@@ -133,7 +154,7 @@ public class Match3GameManager : MonoBehaviour
                 matchMap = referee.EvaluateBoardMatches();
                 if (referee.HasAnyMatch(matchMap))
                 {
-                    currentCombo++; 
+                    currentCombo++;
                     UpdateGameUI();
                 }
             }
@@ -174,7 +195,7 @@ public class Match3GameManager : MonoBehaviour
                     board.SwapGridData(new Vector2Int(x, y), new Vector2Int(x + 1, y));
                     bool possibleMatch = referee.HasAnyMatch(referee.EvaluateBoardMatches());
                     board.SwapGridData(new Vector2Int(x, y), new Vector2Int(x + 1, y));
-                    if (possibleMatch) return false; 
+                    if (possibleMatch) return false;
                 }
                 if (y < h - 1)
                 {
@@ -185,7 +206,7 @@ public class Match3GameManager : MonoBehaviour
                 }
             }
         }
-        return true; 
+        return true;
     }
 
     void TriggerDeadlockRefresh()
@@ -217,7 +238,7 @@ public class Match3GameManager : MonoBehaviour
     {
         if (turnText != null) turnText.text = "남은 턴: " + currentTurn;
         if (comboText != null) comboText.text = currentCombo + " COMBO";
-        
+
         // 코드가 실시간 생성한 슬라이더와 컬러 이미지를 쳐다보며 안전하게 UI 업데이트 진행
         if (monsterHPSlider != null)
         {
