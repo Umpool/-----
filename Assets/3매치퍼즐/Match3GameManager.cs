@@ -73,6 +73,23 @@ public class Match3GameManager : MonoBehaviour
 
         UpdateGameUI();
         board.InitializeBoard();
+        // 화면 하이어라키에 실시간 스폰된 64개 블록들을 지휘관 장부(BoardArray)에 순서대로 강제 등록합니다.
+        for (int x = 0; x < board.width; x++)
+        {
+            for (int y = 0; y < board.height; y++)
+            {
+                // 하이어라키에서 이름표("Block_(X,Y)")로 블록을 수색하여 찾아냅니다.
+                GameObject foundBlock = GameObject.Find($"Block_({x},{y})");
+                if (foundBlock != null)
+                {
+                    int targetIndex = y * board.width + x; // 2차원 좌표를 1차원 인덱스로 변환하는 공식
+                    board.BoardArray[targetIndex] = foundBlock;
+                }
+            }
+        }
+        Debug.Log("🎲 [대성공] 64개 실물 블록 주소를 지휘관 장부(BoardArray)에 100% 동기화 완료했습니다!");
+
+
 
         if (CheckBoardDeadlock())
         {
