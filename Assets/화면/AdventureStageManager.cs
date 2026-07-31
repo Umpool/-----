@@ -13,6 +13,10 @@ public class AdventureStageManager : MonoBehaviour
     [Range(0.001f, 2.0f)]
     public float eventEndDisplayDelay = 2.0f;
 
+    [Header("[재료 채집 빅 이벤트 단계별 설정 목록]")]
+    public System.Collections.Generic.List<BigEventSetting> bigEventSettings = new System.Collections.Generic.List<BigEventSetting>();
+
+
 
     [Header("[모험 최초 진입 튜토리얼 설정]")]
     [TextArea(2, 5)]
@@ -20,7 +24,18 @@ public class AdventureStageManager : MonoBehaviour
 
     private int selectedPathType = 0; // 0: 최초 기본, 1: 재화 폭등, 2: 동료 폭등, 3: 재료 폭등
     private bool isUpperButtonClicked = false; // 상단 버튼 클릭 신호 감지용 변수
-    private int rewardPathCount = 0; // 재화의 길 누적 선택 횟수
+    private int rewardPathCount = 0; // 광맥채광 누적 선택 횟수
+
+    // 🎨 색상별 누적 채집 횟수를 세어주는 카운터 변수들
+    private int redCollectCount = 0;
+    private int yellowCollectCount = 0;
+    private int greenCollectCount = 0;
+    private int blueCollectCount = 0;
+    private int purpleCollectCount = 0;
+
+    private int blackCollectCount = 0;
+
+
     private int currentMaxRewardAmount = 1; // 현재 얻을 수 있는 컬러의 최대 개수 (최대 5)
 
 
@@ -32,19 +47,19 @@ public class AdventureStageManager : MonoBehaviour
     {
         Random.InitState((int)System.DateTime.Now.Ticks);
 
-        // 1. 좌측 버튼 클릭 센서 (재화의 길)
+        // 1. 좌측 버튼 클릭 센서 (광맥채광)
         if (uiManager.leftButton != null)
         {
             uiManager.leftButton.GetComponent<UnityEngine.UI.Button>().onClick.AddListener(() => isLeftButtonClicked = true);
         }
 
-        // 2. 상단 버튼 클릭 센서 (topButton / 동료의 길)
+        // 2. 상단 버튼 클릭 센서 (topButton / 외곽순찰)
         if (uiManager.topButton != null)
         {
             uiManager.topButton.GetComponent<UnityEngine.UI.Button>().onClick.AddListener(() => isUpperButtonClicked = true);
         }
 
-        // 3. 우측 버튼 클릭 센서 (재료의 길)
+        // 3. 우측 버튼 클릭 센서 (재료채집)
         if (uiManager.rightButton != null)
         {
             uiManager.rightButton.GetComponent<UnityEngine.UI.Button>().onClick.AddListener(() => isRightButtonClicked = true);
@@ -58,11 +73,11 @@ public class AdventureStageManager : MonoBehaviour
     private IEnumerator AdventureLoop()
     {
         // 💬 모험씬에 오자마자 첫 대사를 다다닥 띄웁니다.
-        string startPathText = "앞에 세 갈래 길의 표지판이 보입니다.\n어느 길로 모험을 시작하시겠습니까?";
+        string startPathText = "표지판에 적힌 의뢰 내용입니다.\n 어떤 임무를 수행하시겠습니까?";
         uiManager.SetTextTyping(startPathText);
 
         // 버튼 3개에 기획하신 3대 갈림길 대사를 주입합니다.
-        uiManager.SetButtonTexts("재화의 길", "동료의 길", "재료의 길");
+        uiManager.SetButtonTexts("광맥채광", "외곽순찰", "재료채집");
 
         if (uiManager.leftButton != null) uiManager.leftButton.gameObject.SetActive(true);
         if (uiManager.topButton != null) uiManager.topButton.gameObject.SetActive(true);
@@ -119,9 +134,9 @@ public class AdventureStageManager : MonoBehaviour
         {
 
             int dice = Random.Range(1, 21);
-            EventType chosenType;
+            EventType chosenType = EventType.NothingFound; // 🎯 뒤에 기본값을 적어서 채워줍니다!
 
-            // 1. [재화의 길] 골드 상자 60% / 기타(컬러상자, 몬스터, 허탕) 40% 분배 (NPC 차단)
+            // 1. [광맥채광] 골드 상자 60% / 기타(컬러상자, 몬스터, 허탕) 40% 분배 (NPC 차단)
             if (selectedPathType == 1)
             {
                 rewardPathCount++;
@@ -171,7 +186,7 @@ public class AdventureStageManager : MonoBehaviour
                 }
             }
 
-            // 2. [동료의 길] NPC 조우 확률 대폭 증가
+            // 2. [외곽순찰] NPC 조우 확률 대폭 증가
             else if (selectedPathType == 2)
             {
                 if (dice <= 14) chosenType = EventType.MeetPerson;
@@ -179,13 +194,40 @@ public class AdventureStageManager : MonoBehaviour
                 else if (dice <= 18) chosenType = EventType.RewardItem;
                 else chosenType = EventType.NothingFound;
             }
-            // 3. [재료의 길] NPC 없이 컬러 재화 획득에 집중
+            // 3. [재료채집] NPC 없이 컬러 재화 획득에 집중
             else if (selectedPathType == 3)
             {
-                if (dice <= 10) chosenType = EventType.RewardItem;
+                // 1~12번 눈 (60%): 컬러 재화 획득
+                if (dice <= 12) chosenType = EventType.RewardItem;
+
+                // 13~14번 눈 (10%): 아무 일도 없다
+                else if (dice <= 14) chosenType = EventType.NothingFound;
+
+                // 15~16번 눈 (10%): 몬스터 출현
                 else if (dice <= 16) chosenType = EventType.MeetMonster;
-                else chosenType = EventType.NothingFound;
+
+                // 17~18번 눈 (10%): 골드 보상 이벤트 발생
+                else if (dice <= 18) chosenType = EventType.RewardItem;
+                // 💡 17~18번 눈일 때 골드 이벤트 강제 덮어쓰기 판정
+                if (dice >= 17 && dice <= 18)
+                {
+                    var goldEvent = allEvents.Find(e => e.eventType == EventType.RewardItem && e.rewardColor == ColorType.Gold);
+                    if (goldEvent != null)
+                    {
+                        yield return StartCoroutine(PlayEvent(goldEvent));
+                        // 궤도를 정상화하고 컴퓨터에게 값이 무조건 들어있음을 증명합니다.
+                        chosenType = EventType.RewardItem;
+                    }
+                }
+
+
+
+
+                // 19~20번 눈: 기본값 안전장치 (컬러 재화)
+                else chosenType = EventType.RewardItem;
             }
+
+
             // 4. 최초 진입 혹은 예외 상황 기본 확률
             else
             {
@@ -284,7 +326,7 @@ public class AdventureStageManager : MonoBehaviour
                     // 🟦 2. 그 외 물망초, 옥잠난초 같은 진짜 순수 컬러 재료 상자방일 때
                     else
                     {
-                        // 유저가 재료의 길(3)을 걷고 있다면 맛깔나는 전용 수집 대사 출력
+                        // 유저가 재료채집(3)을 걷고 있다면 맛깔나는 전용 수집 대사 출력
                         if (selectedPathType == 3)
                         {
                             finalLeftText = "재료를 채집한다";
@@ -411,7 +453,7 @@ public class AdventureStageManager : MonoBehaviour
                         }
 
 
-                        // 2. 재화의 길이 아닐 때 (기본 모험 상태일 때는 기존 기능을 100% 그대로 작동시킵니다)
+                        // 2. 광맥채광이 아닐 때 (기본 모험 상태일 때는 기존 기능을 100% 그대로 작동시킵니다)
                         // 🟦 2. 골드 상자가 아닐 때 (물망초, 옥잠난초 같은 순수 컬러 재화 상자방일 때)
                         else if (data.eventType == EventType.RewardItem)
                         {
@@ -430,10 +472,11 @@ public class AdventureStageManager : MonoBehaviour
                         { ColorType.Green, "#33FF33" },
                         { ColorType.Yellow, "#FFFF33" },
                         { ColorType.Blue, "#3333FF" },
-                        { ColorType.Purple, "#A64DFF" }
+                        { ColorType.Purple, "#A64DFF" },
+                        { ColorType.Black, "#333333" }
                     };
 
-                            ColorType randomColor = (ColorType)Random.Range(1, 6);
+                            ColorType randomColor = (ColorType)Random.Range(1, 7);
                             string colorEngName = randomColor.ToString();
                             string colorKorName = GetColorNameKorean(randomColor);
 
@@ -441,7 +484,88 @@ public class AdventureStageManager : MonoBehaviour
                             if (hexMap.ContainsKey(randomColor)) targetHex = hexMap[randomColor];
 
                             int finalGiveAmount = Random.Range(1, currentMaxRewardAmount + 1);
-                            rewardResultText += "특수 아이템 획득: <color=" + targetHex + ">" + colorKorName + "</color> 컬러를 " + finalGiveAmount + "개 얻었습니다!";
+                            // 🎨 1. 무슨 색을 얻었는지 판정하여 내부 카운터 상승시키기
+                            if (colorEngName == "Red") redCollectCount++;
+                            else if (colorEngName == "Yellow") yellowCollectCount++;
+                            else if (colorEngName == "Green") greenCollectCount++;
+                            else if (colorEngName == "Blue") blueCollectCount++;
+                            else if (colorEngName == "Purple") purpleCollectCount++;
+                            else if (colorEngName == "Black") blackCollectCount++;
+
+                            // 2. 현재 얻은 색상의 누적 횟수를 체크하기 위한 임시 변수
+                            int currentCollectCount = 0;
+                            if (colorEngName == "Red") currentCollectCount = redCollectCount;
+                            if (colorEngName == "Yellow") currentCollectCount = yellowCollectCount;
+                            if (colorEngName == "Green") currentCollectCount = greenCollectCount;
+                            if (colorEngName == "Blue") currentCollectCount = blueCollectCount;
+                            if (colorEngName == "Purple") currentCollectCount = purpleCollectCount;
+                            if (colorEngName == "Black") currentCollectCount = blackCollectCount;
+                            // ⬛ [흑색 특수 기획]: 다섯 가지 기본 색상을 1회씩 모두 모았는지 체크합니다.
+                            if (redCollectCount >= 1 && yellowCollectCount >= 1 && greenCollectCount >= 1 && blueCollectCount >= 1 && purpleCollectCount >= 1)
+                            {
+                                // 조건을 달성했으므로 강제로 흑색(Black) 빅 이벤트로 덮어쓰기 판정을 내립니다!
+                                randomColor = ColorType.Black;
+                                colorEngName = "Black";
+                                colorKorName = "흑색";
+
+                                // 이번 판정용 임시 횟수를 5회로 조작하여 인스펙터의 5회차 흑색 빅 이벤트가 발동되도록 유도합니다.
+                                currentCollectCount = 5;
+
+                                // 사용한 다섯 색상 재료 카운터를 각각 1회씩 차감(소모) 처리합니다.
+                                redCollectCount--;
+                                yellowCollectCount--;
+                                greenCollectCount--;
+                                blueCollectCount--;
+                                purpleCollectCount--;
+                            }
+
+
+                            // 3. 인스펙터 목록(bigEventSettings) 중에서 현재 조건과 일치하는 빅 이벤트를 검색합니다.
+                            BigEventSetting matchedBigEvent = default;
+                            bool isBigEventTriggered = false;
+
+                            for (int i = 0; i < bigEventSettings.Count; i++)
+                            {
+                                if (bigEventSettings[i].targetColor == randomColor && bigEventSettings[i].requiredCount == currentCollectCount)
+                                {
+                                    matchedBigEvent = bigEventSettings[i];
+                                    isBigEventTriggered = true;
+                                    break;
+                                }
+                            }
+
+                            // 🌟 만약 인스펙터에 설정해둔 N회 조건과 일치한다면 빅 이벤트 연출을 시작합니다!
+                            if (isBigEventTriggered)
+                            {
+                                // 인스펙터에 기획해둔 N개만큼 보상 수량을 변경합니다.
+                                finalGiveAmount = matchedBigEvent.rewardAmount;
+
+                                // 인스펙터에 적어둔 대사 리스트를 순서대로 화면에 타이핑 연출합니다.
+                                for (int i = 0; i < matchedBigEvent.eventDialogues.Count; i++)
+                                {
+                                    // 대사 내에 {Color} 문구가 있다면 한글 색상 이름으로 자동 치환해 줍니다.
+                                    string formattedText = matchedBigEvent.eventDialogues[i].Replace("{Color}", colorKorName);
+                                    uiManager.SetTextTyping(formattedText);
+
+                                    // 글자 타이핑 연출이 끝날 때까지 대기합니다.
+                                    while (!uiManager.isTypingFinished) yield return null;
+
+                                    // 유저가 글자를 읽을 수 있도록 대사 간에 1.5초 동안 잠깐 쉬어갑니다.
+                                    yield return new WaitForSeconds(1.5f);
+                                }
+
+                                // 💰 대사가 끝난 즉시 버튼 대기 없이 재화를 상단바에 즉시 실시간 지급!
+                                if (CurrencyManager.Instance != null)
+                                {
+                                    CurrencyManager.Instance.AddColor(colorEngName, finalGiveAmount);
+                                }
+
+                                // 🚀 [기획 핵심]: 전진/돌아간다 버튼 없이 즉시 현재 보상 루프를 패스하고 탈출!
+                                yield return new WaitForSeconds(0.5f);
+                                yield break;
+                            }
+
+                            rewardResultText += "획득: <color=" + targetHex + ">" + colorKorName + "</color> 컬러를 " + finalGiveAmount + "개 얻었습니다!";
 
                             if (CurrencyManager.Instance != null)
                             {
@@ -682,5 +806,22 @@ public class AdventureStageManager : MonoBehaviour
             if (targetTxt != null) targetTxt.raycastTarget = true;
         }
     }
+    [System.Serializable]
+    public struct BigEventSetting
+    {
+        [Header("대상 컬러 재화")]
+        public ColorType targetColor;
+
+        [Header("필요 누적 획득 횟수 (N회)")]
+        public int requiredCount;
+
+        [Header("빅 이벤트 보상 지급량 (N개)")]
+        public int rewardAmount;
+
+        [Header("순차 출력할 빅 이벤트 대사 리스트")]
+        [TextArea(2, 5)]
+        public System.Collections.Generic.List<string> eventDialogues;
+    }
+
 
 }
