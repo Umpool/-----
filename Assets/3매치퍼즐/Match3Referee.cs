@@ -3,9 +3,9 @@ using System.Collections;
 
 public class Match3Referee : MonoBehaviour
 {
-    [Header("--- Block Damage Settings ---")]
-    public string[] blockNames;        // 인스펙터에서 RED, BLUE, GREEN 등 명칭 작성
-    public int[] blockBaseDamages;     // 기획서 반영: 색상마다 부여할 고유 대미지 수치
+    [Header("--- 블록 대미지 설정창 ---")]
+    // 💡 끝에 s가 붙은 blockDamageSettings 가 진짜 이름입니다!
+    public System.Collections.Generic.List<BlockDamageSetting> blockDamageSettings;
 
     private Match3Board board;
 
@@ -96,17 +96,20 @@ public class Match3Referee : MonoBehaviour
                 string currentBlockName = boardArray[index].name;
                 int baseDamage = 10; // 인스펙터 세팅 누락 시 작동할 기본 데미지 수치
 
-                if (blockNames != null && blockBaseDamages != null)
+                // 📐 [100~110번째 줄 최종 교체] 이름표를 수색해 인스펙터에 적힌 대미지를 즉시 매칭합니다.
+                if (blockDamageSettings != null)
                 {
-                    for (int i = 0; i < blockNames.Length; i++)
+                    foreach (var setting in blockDamageSettings)
                     {
-                        if (blockNames[i] == currentBlockName && i < blockBaseDamages.Length)
+                        if (currentBlockName.Contains(setting.blockName))
                         {
-                            baseDamage = blockBaseDamages[i];
+                            baseDamage = setting.damage;
                             break;
                         }
                     }
                 }
+
+
                 totalDamage += baseDamage;
             }
         }
@@ -118,7 +121,7 @@ public class Match3Referee : MonoBehaviour
 
         // [시너지 확장 영역]
         // 추후 이 자리에 유저의 캐릭터 시너지 효과에 따른 가산 공식을 추가해 얹어줄 수 있습니다!
-        
+
         return totalDamage;
     }
 
@@ -169,7 +172,7 @@ public class Match3Referee : MonoBehaviour
                         {
                             boardArray[index] = boardArray[nextIndex];
                             boardArray[nextIndex] = null;
-                            
+
                             // 아래로 미끄러지는 연출 시작
                             StartCoroutine(board.MoveBlockAnimation(boardArray[index], new Vector2Int(x, y)));
                             break;
@@ -198,10 +201,11 @@ public class Match3Referee : MonoBehaviour
                     // 12시 가상 위치(최상단 너머 h 좌표)에서 생성되어 자연스럽게 안착하도록 세팅
                     int randomIndex = Random.Range(0, board.blockPrefabs.Length);
                     Vector3 spawnPos = board.GetWorldPosition(x, h);
-                    
-                    GameObject newBlock = Instantiate(board.blockPrefabs[randomIndex], spawnPos, Quaternion.identity, board.boardParent);
+
+                    // 202번째 줄 맨 끝의 boardParent를 유저님이 지정하신 진짜 변수명인 gridGroup으로 고쳐줍니다!
+                    GameObject newBlock = Instantiate(board.blockPrefabs[randomIndex], spawnPos, Quaternion.identity, board.gridGroup);
                     newBlock.name = board.blockPrefabs[randomIndex].name;
-                    
+
                     boardArray[index] = newBlock;
                     StartCoroutine(board.MoveBlockAnimation(boardArray[index], new Vector2Int(x, y)));
                 }
@@ -209,4 +213,12 @@ public class Match3Referee : MonoBehaviour
         }
         yield return new WaitForSeconds(0.2f);
     }
+    // 💡 [클래스 내부 최하단에 추가] 이름표와 숫자를 한 세트로 묶어주는 정밀 설계도
+    [System.Serializable]
+    public struct BlockDamageSetting
+    {
+        public string blockName; // 여기에 "RED", "YELLOW" 등이 눈으로 보입니다.
+        public int damage;       // 여기에 대미지 숫자를 적으면 됩니다.
+    }
+
 }
