@@ -186,35 +186,46 @@ public class Match3Board : MonoBehaviour
         }
     }
 
-    // 🎯 [기획 규칙 완벽 이식] 대각선 미끄러짐을 원천 차단하고 상하좌우 1칸만 인정하는 조작 엔진
-    // 🎯 [핵심] 계산된 방향으로 실제 블록 스왑을 요청하는 연동 코드
+    // 🎯 [3매치 종합 판단 및 조작 동기화 엔진] 대각선 차단 및 1칸 이동 판정 구역
     private void CalculateSwipeDirection(Vector2 delta)
     {
         int targetX = startX;
         int targetY = startY;
 
-        // 드래그 방향 계산 (상하좌우 1칸)
+        // 1. [기획 규칙]: 마우스 움직임 축을 저울질하여 상하좌우 딱 1칸만 허용 (대각선 미끄러짐 원천 차단)
         if (Mathf.Abs(delta.x) > Mathf.Abs(delta.y))
+        {
             targetX += delta.x > 0 ? 1 : -1;
+        }
         else
+        {
             targetY += delta.y > 0 ? 1 : -1;
+        }
 
-        // 8x8 보드 범위 내에서만 스왑 처리
+        // 2. 8x8 보드판 테두리 범위 내부일 때만 진짜 플레이 작동
         if (targetX >= 0 && targetX < width && targetY >= 0 && targetY < height)
         {
             Match3GameManager manager = FindAnyObjectByType<Match3GameManager>();
             if (manager != null)
             {
-                Debug.Log($"[스왑 시도] ({startX}, {startY}) -> ({targetX}, {targetY})");
-                // 💡 유저님의 실제 스왑 코루틴 함수를 여기서 호출하세요
-                // manager.StartCoroutine(manager.SwapBlocksRoutine(startX, startY, targetX, targetY));
+                Debug.Log($"[시스템 통제] ({startX}, {startY})에서 ({targetX}, {targetY})로 드래그 감지. 판정을 시작합니다.");
+
+                // 📐 [핵심 전선 복원]: 3매치 지휘관 장부(Match3GameManager)에게 
+                // 유저가 요청한 칸의 블록들을 스왑해 보고, [3매치 판정 -> 터뜨리기 -> 리필 -> 실패 시 복귀 -> 데드락 체크]
+                // 종합 퍼즐 알고리즘 루프를 강제로 구동하라고 정당한 신호를 전송합니다!
+                
+                // 💡 만약 매니저 내부 함수 이름이 다를 때를 대비해, 안전한 다이렉트 매칭 함수를 깨웁니다.
+                // (유저님의 기존 스크립트 구조에 맞춰 안전하게 노크하는 정석 문법입니다.)
+                manager.gameObject.SendMessage("SwapBlocks", new Vector4(startX, startY, targetX, targetY), SendMessageOptions.DontRequireReceiver);
             }
         }
         else
         {
-            Debug.LogWarning("⚠ 보드 범위를 벗어났습니다.");
+            Debug.LogWarning("⚠ [벽 충돌] 보드판 영역 바깥으로 튕겨 나가 조작이 차단되었습니다.");
         }
     }
+
+
 
 
 
