@@ -268,14 +268,13 @@ public class Match3GameManager : MonoBehaviour
             }
         }
     }
-        // 🚀 [우리 프로젝트 전용 3매치 가동 엔진] Match3Board가 보내온 픽셀 스왑 신호를 받아 실행합니다.
-    public void SwapBlocks(Vector4 swipeData)
+    // 🚀 [우리 프로젝트 전용 3매치 가동 엔진] Match3Board가 던진 드래그 신호를 직통 수신합니다!
+    public void SwapBlocks(UnityEngine.Vector4 swipeData)
     {
         int sX = (int)swipeData.x; int sY = (int)swipeData.y;
         int tX = (int)swipeData.z; int tY = (int)swipeData.w;
 
-        // 연산 중 중복 조작 방지 잠금장치 가동
-        if (isProcessing) return;
+        if (isProcessing) return; // 중복 조작 잠금장치
         StartCoroutine(SwapAndProcessRoutine(sX, sY, tX, tY));
     }
 
@@ -283,52 +282,43 @@ public class Match3GameManager : MonoBehaviour
     {
         isProcessing = true;
 
+        // 📐 유저님의 8x8 2차원 배열 격자 구조와 100% 동기화하는 인덱스 연산
         int srcIndex = sY * board.width + sX;
         int dstIndex = tY * board.width + tX;
 
-        GameObject srcBlock = board.BoardArray[srcIndex];
-        GameObject dstBlock = board.BoardArray[dstIndex];
+        UnityEngine.GameObject srcBlock = board.BoardArray[srcIndex];
+        UnityEngine.GameObject dstBlock = board.BoardArray[dstIndex];
 
         if (srcBlock == null || dstBlock == null) { isProcessing = false; yield break; }
 
-        // 1. [실제 화면 블록 이동 연출]: 가시적인 위치를 슉 교체합니다.
-        Vector3 srcPos = srcBlock.transform.localPosition;
-        Vector3 dstPos = dstBlock.transform.localPosition;
-        
+        // 1. [기획서 반영]: 화면상의 실제 블록 위치를 슉 교체하는 눈속임 연출
+        UnityEngine.Vector3 srcPos = srcBlock.transform.localPosition;
+        UnityEngine.Vector3 dstPos = dstBlock.transform.localPosition;
+
         srcBlock.transform.localPosition = dstPos;
         dstBlock.transform.localPosition = srcPos;
 
-        // 컴퓨터 장부 데이터도 스왑
+        // 실물 위치 바꿨으니 컴퓨터 내부 데이터 장부도 동기화 스왑
         board.BoardArray[srcIndex] = dstBlock;
         board.BoardArray[dstIndex] = srcBlock;
 
-        yield return new WaitForSeconds(0.2f); // 스왑 이동 대기 시간
+        yield return new UnityEngine.WaitForSeconds(0.2f); // 부드러운 스왑 이동 대기 시간
 
-        // 2. [3매치 성공/실패 여부 정밀 판정]: 유저님이 만들어둔 Referee 심판을 깨웁니다!
-        // ======================================================================
-        // 📐 [312~329번째 줄 구역 최종 교체] 유저님의 진짜 bool[,] 격자 지도 규칙 적용
-        // ======================================================================
+        // 2. [3매치 판정 단계]: 우리가 개조한 완성형 Referee 심판기를 호출합니다!
         Match3Referee referee = FindAnyObjectByType<Match3Referee>();
         bool hasMatches = false;
-        bool[,] myMatchMap = null; // 유저님의 진짜 2차원 지도를 담을 임시 주머니
+        bool[,] myMatchMap = null;
 
         if (referee != null)
         {
-            // 💡 [핵심 수정] 유저님의 룰대로 EvaluateBoardMatches()가 뿜어내는 bool[,] 진짜 격자 지도를 받아옵니다!
-            myMatchMap = referee.EvaluateBoardMatches();
-
-            // 가져온 지도 내부를 훑어보며 터질 블록(true)이 단 하나라도 섞여 있는지 판정합니다.
+            myMatchMap = referee.EvaluateBoardMatches(); // 8x8 격자 지도 수색 수신
             if (myMatchMap != null)
             {
                 for (int x = 0; x < board.width; x++)
                 {
                     for (int y = 0; y < board.height; y++)
                     {
-                        if (myMatchMap[x, y])
-                        {
-                            hasMatches = true;
-                            break;
-                        }
+                        if (myMatchMap[x, y]) { hasMatches = true; break; }
                     }
                     if (hasMatches) break;
                 }
@@ -337,31 +327,40 @@ public class Match3GameManager : MonoBehaviour
 
         if (hasMatches && myMatchMap != null)
         {
-            // 🎉 [성공]: 3개 이상 한 줄 완성! 터뜨리고 대미지 계산 가동!
-            Debug.Log("[판정 완료] 우리만의 규칙으로 3매치 대성공! 폭발 연출로 전진합니다.");
+            // 🎉 [3매치 성공 조건]: 블록 팡팡 터뜨리고 몬스터 피 깎기 가동!
+            UnityEngine.Debug.Log("[판정 완료] 3매치 대성공! 폭발 정산 처리를 시작합니다.");
 
-            // 💡 에러가 나던 referee.MatchMap 자리를 우리가 새로 수신한 진짜 지도(myMatchMap)로 완벽 매칭합니다!
             float totalDmg = referee.CalculateTotalDamage(myMatchMap, currentCombo);
-            monsterHP -= totalDmg; 
+            monsterHP -= totalDmg; // 인스펙터 속성 대미지 연동 완료
             UpdateGameUI();
 
-            // 💡 똑같이 폭발 연출 함수에도 진짜 지도(myMatchMap)를 연결해 줍니다.
-            yield return StartCoroutine(referee.ClearMatchedBlocks(myMatchMap));
+            yield return StartCoroutine(referee.ClearMatchedBlocks(myMatchMap)); // 폭발 연출 대기
 
+            // 💡 [추후 확장 영역]: 여기에 빈칸 채우기(리필) 코드를 얹어주시면 됩니다!
             currentCombo++;
         }
         else
         {
-            // ❌ [실패]: 3매치 실패! "이동중인 블록은 제자리로 복귀해야 해" 기획 규칙 강제 발동!
-            Debug.Log("[판정 완료] 3매치 조건 실패! 블록을 본래 고유 터전 주소로 되돌립니다.");
+            // ❌ [3매치 실패 조건]: "3매치 실패면 이동중인 블록은 제자리로 돌아가야해" 규정 강제 집행!
+            UnityEngine.Debug.Log("[판정 완료] 3매치 조건 불만족. 원래 터전으로 복귀 연출 가동.");
 
             srcBlock.transform.localPosition = srcPos;
             dstBlock.transform.localPosition = dstPos;
 
             board.BoardArray[srcIndex] = srcBlock;
             board.BoardArray[dstIndex] = dstBlock;
-            yield return new WaitForSeconds(0.2f);
+            yield return new UnityEngine.WaitForSeconds(0.2f);
         }
+
+        // 3. [데드락 판정]: 한 턴이 끝났을 때 판이 막혔는지 감시
+        if (CheckBoardDeadlock())
+        {
+            TriggerDeadlockRefresh(); // 데드락 새로고침 실시간 구동!
+        }
+
+        currentTurn--;
+        UpdateGameUI();
+        isProcessing = false; // 조작 잠금 해제
     }
 
 }
