@@ -268,4 +268,100 @@ public class Match3GameManager : MonoBehaviour
             }
         }
     }
+        // 🚀 [우리 프로젝트 전용 3매치 가동 엔진] Match3Board가 보내온 픽셀 스왑 신호를 받아 실행합니다.
+    public void SwapBlocks(Vector4 swipeData)
+    {
+        int sX = (int)swipeData.x; int sY = (int)swipeData.y;
+        int tX = (int)swipeData.z; int tY = (int)swipeData.w;
+
+        // 연산 중 중복 조작 방지 잠금장치 가동
+        if (isProcessing) return;
+        StartCoroutine(SwapAndProcessRoutine(sX, sY, tX, tY));
+    }
+
+    private System.Collections.IEnumerator SwapAndProcessRoutine(int sX, int sY, int tX, int tY)
+    {
+        isProcessing = true;
+
+        int srcIndex = sY * board.width + sX;
+        int dstIndex = tY * board.width + tX;
+
+        GameObject srcBlock = board.BoardArray[srcIndex];
+        GameObject dstBlock = board.BoardArray[dstIndex];
+
+        if (srcBlock == null || dstBlock == null) { isProcessing = false; yield break; }
+
+        // 1. [실제 화면 블록 이동 연출]: 가시적인 위치를 슉 교체합니다.
+        Vector3 srcPos = srcBlock.transform.localPosition;
+        Vector3 dstPos = dstBlock.transform.localPosition;
+        
+        srcBlock.transform.localPosition = dstPos;
+        dstBlock.transform.localPosition = srcPos;
+
+        // 컴퓨터 장부 데이터도 스왑
+        board.BoardArray[srcIndex] = dstBlock;
+        board.BoardArray[dstIndex] = srcBlock;
+
+        yield return new WaitForSeconds(0.2f); // 스왑 이동 대기 시간
+
+        // 2. [3매치 성공/실패 여부 정밀 판정]: 유저님이 만들어둔 Referee 심판을 깨웁니다!
+        // ======================================================================
+        // 📐 [312~329번째 줄 구역 최종 교체] 유저님의 진짜 bool[,] 격자 지도 규칙 적용
+        // ======================================================================
+        Match3Referee referee = FindAnyObjectByType<Match3Referee>();
+        bool hasMatches = false;
+        bool[,] myMatchMap = null; // 유저님의 진짜 2차원 지도를 담을 임시 주머니
+
+        if (referee != null)
+        {
+            // 💡 [핵심 수정] 유저님의 룰대로 EvaluateBoardMatches()가 뿜어내는 bool[,] 진짜 격자 지도를 받아옵니다!
+            myMatchMap = referee.EvaluateBoardMatches();
+
+            // 가져온 지도 내부를 훑어보며 터질 블록(true)이 단 하나라도 섞여 있는지 판정합니다.
+            if (myMatchMap != null)
+            {
+                for (int x = 0; x < board.width; x++)
+                {
+                    for (int y = 0; y < board.height; y++)
+                    {
+                        if (myMatchMap[x, y])
+                        {
+                            hasMatches = true;
+                            break;
+                        }
+                    }
+                    if (hasMatches) break;
+                }
+            }
+        }
+
+        if (hasMatches && myMatchMap != null)
+        {
+            // 🎉 [성공]: 3개 이상 한 줄 완성! 터뜨리고 대미지 계산 가동!
+            Debug.Log("[판정 완료] 우리만의 규칙으로 3매치 대성공! 폭발 연출로 전진합니다.");
+
+            // 💡 에러가 나던 referee.MatchMap 자리를 우리가 새로 수신한 진짜 지도(myMatchMap)로 완벽 매칭합니다!
+            float totalDmg = referee.CalculateTotalDamage(myMatchMap, currentCombo);
+            monsterHP -= totalDmg; 
+            UpdateGameUI();
+
+            // 💡 똑같이 폭발 연출 함수에도 진짜 지도(myMatchMap)를 연결해 줍니다.
+            yield return StartCoroutine(referee.ClearMatchedBlocks(myMatchMap));
+
+            currentCombo++;
+        }
+        else
+        {
+            // ❌ [실패]: 3매치 실패! "이동중인 블록은 제자리로 복귀해야 해" 기획 규칙 강제 발동!
+            Debug.Log("[판정 완료] 3매치 조건 실패! 블록을 본래 고유 터전 주소로 되돌립니다.");
+
+            srcBlock.transform.localPosition = srcPos;
+            dstBlock.transform.localPosition = dstPos;
+
+            board.BoardArray[srcIndex] = srcBlock;
+            board.BoardArray[dstIndex] = dstBlock;
+            yield return new WaitForSeconds(0.2f);
+        }
+    }
+
 }
