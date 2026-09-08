@@ -3,42 +3,30 @@ using System.Collections;
 
 public class Match3Board : MonoBehaviour
 {
-    [Header("ㅡ 마우스 및 드래그 제어 변수 ㅡ")]
-    private GameObject selectedBlock = null; // 현재 마우스로 꾹 누른 블록
-    private Vector2 clickStartPos;            // 처음 마우스를 클릭한 화면 좌표
-    private int startX, startY;               // 클릭한 블록의 바둑판 격자 좌표 (X, Y)
-
-    [Header("ㅡ 조작 잠금 안전 스위치 ㅡ")]
-    // 블록이 터지거나 리필되는 도중에는 마우스 조작을 일시적으로 차단하는 방어막입니다.
     public bool isProcessing = false;
-
-    [Header("보드판 실물 영역 크기 설정")]
-    public float boardSizeX = 8.0f; // 에디터 인스펙터에서 이 숫자를 키우면 퍼즐판이 가로로 넓어집니다!
-    public float boardSizeY = 8.0f; // 이 숫자를 키우면 퍼즐판이 세로로 길어집니다!
-
-
-    [Header("--- Board Settings ---")]
+    public float boardSizeX = 8.0f;
+    public float boardSizeY = 8.0f;
     public int width = 8;
     public int height = 8;
     public float cellSize = 1.0f;
     public Transform gridGroup;
-
-    [Header("--- Block Prefabs (6 Colors) ---")]
     public GameObject[] blockPrefabs;
-
     private GameObject[] boardArray;
+
+    private GameObject selectedBlock = null;
+    private Vector2 clickStartPos;
+    private int startX;
+    private int startY;
 
     public int Width => width;
     public int Height => height;
     public GameObject[] BoardArray => boardArray;
 
-
-
     void Awake()
     {
         boardArray = new GameObject[width * height];
     }
-    // 🎲 [최종 기획 이식] 위치 이동 및 크기 변화에 실시간 100% 자동 대응하는 8x8 배치 엔진
+
     public void InitializeBoard()
     {
         Debug.Log("[기획 반영] 보드의 위치와 크기 변동에 자동으로 대응하여 8x8 배치를 시작합니다.");
@@ -142,57 +130,66 @@ public class Match3Board : MonoBehaviour
         }
         block.transform.position = targetPos;
     }
+    // 🚀 [우리 프로젝트 전용 최신식 3매치 마우스 조작/동기화 엔진]
     private void Update()
     {
-        // // 🛡 [방어막]: 블록 연산 중이거나 게임판 준비 안 되었을 때는 마우스 입력을 원천 차단합니다.
         if (isProcessing) return;
 
-        // 1. 마우스 왼쪽 버튼을 [꾹 눌렀을 때] (클릭 시작 구역)
+        // 1. 마우스 왼쪽 버튼을 [꾹 눌렀을 때] (UI 전용 조준경으로 블록 록온)
         if (UnityEngine.InputSystem.Mouse.current.leftButton.wasPressedThisFrame)
         {
             Vector2 mouseScreenPos = UnityEngine.InputSystem.Mouse.current.position.ReadValue();
+            clickStartPos = mouseScreenPos;
 
-            // 💡 [2D 월드 조준경으로 교체] 마우스 위치에 있는 2D 콜라이더 블록을 정밀 포착합니다!
-            Vector3 mouseWorldPos = Camera.main.ScreenToWorldPoint(new Vector3(mouseScreenPos.x, mouseScreenPos.y, Mathf.Abs(Camera.main.transform.position.z)));
-            Collider2D hitCollider = Physics2D.OverlapPoint(mouseWorldPos);
+            // 🎯 [UI 전용 조준경 발동]: 캔버스 위에 그려진 UI 블록을 정밀 포착합니다.
+            UnityEngine.EventSystems.PointerEventData pointerData = new UnityEngine.EventSystems.PointerEventData(UnityEngine.EventSystems.EventSystem.current);
+            pointerData.position = mouseScreenPos;
+            System.Collections.Generic.List<UnityEngine.EventSystems.RaycastResult> results = new System.Collections.Generic.List<UnityEngine.EventSystems.RaycastResult>();
+            UnityEngine.EventSystems.EventSystem.current.RaycastAll(pointerData, results);
 
-            if (hitCollider != null && hitCollider.gameObject.name.Contains("Block_"))
+            // 📐 [Match3Board.cs 내부 136번 줄 부근 수정]
+            // 기존의 Contains("Block_")을 과감히 지우고, 생성된 모든 자식 블록들을 포착할 수 있게 빗장을 풉니다!
+            foreach (var result in results)
             {
-                selectedBlock = hitCollider.gameObject;
-                clickStartPos = mouseScreenPos;
+                // 부모가 GridGroup(보드판 부모)인 자식 오브젝트라면 무조건 블록으로 인정하고 조준합니다!
+                if (result.gameObject != null && result.gameObject.transform.parent == gridGroup)
+                {
+                    selectedBlock = result.gameObject;
 
-                // 📐 [이름표 좌표 추출] 기존 유저님의 splitName 로직 그대로 유지
-                string[] splitName = selectedBlock.name.Replace("Block_(", "").Replace(")", "").Split(',');
-                int.TryParse(splitName[0], out startX);
-                int.TryParse(splitName[1], out startY);
+                    // 📐 [이름표 좌표 자르기]: 이제 "Block_(X,Y)" 문자열 파싱이 필요 없으므로, 
+                    // 실물 블록이 배치된 칸 좌표를 100% 안전하게 다이렉트로 축출해 낼 수 있는 코드로 이어집니다.
+                    // 📐 [추가할 코드 2줄]: 클릭한 블록의 이름 "Block_(X,Y)"에서 X와 Y 숫자를 정확하게 잘라내 장부에 기억시킵니다.
+                    string[] nameParts = selectedBlock.name.Replace("Block_(", "").Replace(")", "").Split(',');
+                    if (nameParts.Length == 2) { int.TryParse(nameParts[0], out startX); int.TryParse(nameParts[1], out startY); }
+
+                    break;
+                }
             }
+
         }
 
-
-        // 2. 마우스 왼쪽 버튼을 [뗄 때] (드래그 종료 및 방향 계산) - 최신 패키지 규격 연동
+        // 2. 마우스 왼쪽 버튼을 [뗄 때] (드래그 변위 계산 및 지휘관 다이렉트 호출)
         if (UnityEngine.InputSystem.Mouse.current.leftButton.wasReleasedThisFrame && selectedBlock != null)
         {
-            // 최신식 마우스 뗀 위치 좌표 실시간 수신
             Vector2 clickEndPos = UnityEngine.InputSystem.Mouse.current.position.ReadValue();
-            Vector2 delta = clickEndPos - clickStartPos; // 마우스가 움직인 거리와 방향 변위
+            Vector2 delta = clickEndPos - clickStartPos;
 
-            // // 최소 30픽셀 이상은 드래그해야 사용자가 움직인 것으로 인정합니다 (미끄러짐 방지)
+            // 최소 30픽셀 이상 확실하게 당겼을 때만 단방향 이동기 가동
             if (delta.magnitude > 30f)
             {
                 CalculateSwipeDirection(delta);
             }
 
-            selectedBlock = null; // // 조작 완료 후 선택 해제
+            selectedBlock = null;
         }
     }
 
-    // 🎯 [3매치 종합 판단 및 조작 동기화 엔진] 대각선 차단 및 1칸 이동 판정 구역
     private void CalculateSwipeDirection(Vector2 delta)
     {
         int targetX = startX;
         int targetY = startY;
 
-        // 1. [기획 규칙]: 마우스 움직임 축을 저울질하여 상하좌우 딱 1칸만 허용 (대각선 미끄러짐 원천 차단)
+        // 📐 [기획서 반영]: 상하좌우 단방향 1칸 제약 (대각선 차단)
         if (Mathf.Abs(delta.x) > Mathf.Abs(delta.y))
         {
             targetX += delta.x > 0 ? 1 : -1;
@@ -202,30 +199,23 @@ public class Match3Board : MonoBehaviour
             targetY += delta.y > 0 ? 1 : -1;
         }
 
-        // 2. 8x8 보드판 테두리 범위 내부일 때만 진짜 플레이 작동
-        // 📐 [Match3Board.cs 내부 CalculateSwipeDirection 최종 전선 직결 교체]
+        // 8x8 보드 영역 내부일 때만 전선 작동
         if (targetX >= 0 && targetX < width && targetY >= 0 && targetY < height)
         {
             Match3GameManager manager = FindAnyObjectByType<Match3GameManager>();
             if (manager != null)
             {
-                Debug.Log($"[시스템 통제] ({startX}, {startY})에서 ({targetX}, {targetY})로 드래그 감지. 판정을 시작합니다.");
+                UnityEngine.Debug.Log($"[시스템 통제] ({startX}, {startY})에서 ({targetX}, {targetY})로 드래그 감지. 판정을 시작합니다.");
 
-                // 💡 [치료 열쇠]: 주소를 확실하게 추적해 지휘관 내부의 SwapBlocks를 다이렉트로 관통 호출합니다!
-                // Vector4 데이터 단락을 생성해 그대로 전송해 줍니다.
-                Vector4 swipeVector = new Vector4(startX, startY, targetX, targetY);
-                manager.SwapBlocks(swipeVector); 
+                // 💡 [치료 열쇠]: 유저님의 진짜 GameManager 장부 함수인 swapBlocks(int, int, int, int) 규격과 100% 일치하게 전선을 직결합니다!
+                // 📐 [220번째 줄 수정] swapBlocks를 대문자 SwapBlocks로 변경해 줍니다!
+                manager.swapBlocks(startX, startY, targetX, targetY);
             }
         }
-
         else
         {
-            Debug.LogWarning("⚠ [벽 충돌] 보드판 영역 바깥으로 튕겨 나가 조작이 차단되었습니다.");
+            UnityEngine.Debug.LogWarning("⚠ 보드판 영역 바깥으로 드래그가 차단되었습니다.");
         }
     }
-
-
-
-
 
 }
